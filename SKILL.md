@@ -23,6 +23,20 @@ This skill assumes HyperFrames is available. It depends on, and defers framework
 
 If those skills aren't installed: `npx skills add heygen-com/hyperframes`.
 
+## Brand fidelity (DESIGN.md) — check FIRST
+
+Before any client ad, run the pre-flight check. If a `DESIGN.md` exists
+(composition project root, or `~/claude_work/brand-kits/<slug>/`), it is the
+source of truth. HyperFrames reads `DESIGN.md`/`design.md` **natively**, so
+syncing the client file into the composition project root makes brand
+colors/fonts authoritative with zero code change; also map its tokens onto the
+template `:root` vars (`--accent`, `--ink`, `--bg`, `--mute`) so captions,
+kinetic type, lockup, and PIP borders are on-brand. Unresolved `TODO: VERIFY`
+or lint errors → stop and resolve with the user. No DESIGN.md → use the
+[`brand-kit`](https://github.com/ai-agents-for-agencies-coaches/brand-kit)
+skill to extract + verify one. **Never guess a client's brand.** Keep the
+proven structure/pacing; only the brand layer comes from DESIGN.md.
+
 ## When to use / not
 
 **Use:** any paid social video ad — motion-graphics spot, founder/UGC talking-head ad, kinetic-type promo, Reel/Short, "make a video like this winning ad".
