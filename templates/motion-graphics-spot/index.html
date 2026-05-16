@@ -1,0 +1,124 @@
+<!doctype html>
+<!--
+  TEMPLATE: motion-graphics-spot  (HyperFrames composition)
+  Pure kinetic-typography ad. No presenter footage. VO + SFX.
+  ~18s, 1080x1920, 30fps. Vertical (Reels/Shorts/Stories).
+
+  SWAP THESE:
+    --accent / --accent-light / --accent-deep / --ink / --bg   brand tokens (:root)
+    audio/vo.mp3                                                generate via scripts/tts.py
+    [HOOK] [PROBLEM] [SOLUTION] [PROOF_NUM] [PROOF_LABEL] [CTA]  copy
+    SFX timings                                                 anchor to whisper word starts
+  Beat arc (keep the RATIOS, retime to your VO):
+    hook 0-3 · problem 3-7 · solution 7-11 · proof 11-15 · CTA 15-18
+  Workflow: scripts/tts.py -> scripts/whisper-words.py -> retime beats -> scripts/fetch-sfx.sh -> npx hyperframes lint && render
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1080, height=1920" />
+  <title>Motion Graphics Spot</title>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#0a0a0c; --ink:#f5f5f7; --mute:#8b8b95;
+      --accent:#10b981; --accent-light:#6ee7b7; --accent-deep:#064e3b;
+      --warn:#f59e0b; --danger:#ef4444;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{width:1080px;height:1920px;overflow:hidden;background:var(--bg);
+      color:var(--ink);font-family:"Inter",ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+    .clip{position:absolute;opacity:0}
+    .stage{position:absolute;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;text-align:center;padding:0 90px}
+    .kicker{font-size:34px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-light)}
+    .big{font-size:118px;font-weight:900;line-height:1.02;letter-spacing:-.02em;margin-top:24px}
+    .big .hl{color:var(--accent)}
+    .sub{font-size:52px;font-weight:600;color:var(--mute);line-height:1.25;margin-top:30px}
+    .proof-num{font-size:240px;font-weight:900;color:var(--accent);line-height:1;letter-spacing:-.03em}
+    .proof-label{font-size:54px;font-weight:800;margin-top:8px}
+    .cta{font-size:96px;font-weight:900;letter-spacing:-.02em}
+    .cta .hl{color:var(--accent)}
+    .pill{margin-top:46px;font-size:46px;font-weight:800;color:var(--bg);
+      background:var(--accent);padding:26px 64px;border-radius:999px}
+    .bgglow{position:absolute;inset:0;background:
+      radial-gradient(60% 45% at 50% 38%,rgba(16,185,129,.22),transparent 70%);opacity:1}
+    .bar{position:absolute;left:0;bottom:0;height:14px;width:0;background:var(--accent)}
+  </style>
+</head>
+<body>
+  <div id="root" data-composition-id="main"
+       data-start="0" data-duration="18"
+       data-width="1080" data-height="1920" data-fps="30">
+
+    <div class="bgglow"></div>
+    <div id="progress" class="bar"></div>
+
+    <!-- VO (track 0) — replace with scripts/tts.py output -->
+    <audio id="vo" class="clip" src="audio/vo.mp3" data-start="0" data-duration="18" data-track-index="0"></audio>
+
+    <!-- SFX rail (track 300+) — fetch via scripts/fetch-sfx.sh, retime to whisper words -->
+    <audio id="sfx-whoosh-1" class="clip" src="assets/sfx/whoosh.mp3" data-start="0.0"  data-duration="0.6"  data-track-index="300"></audio>
+    <audio id="sfx-stamp-1"  class="clip" src="assets/sfx/stamp.mp3"  data-start="3.0"  data-duration="0.5"  data-track-index="301"></audio>
+    <audio id="sfx-whoosh-2" class="clip" src="assets/sfx/whoosh.mp3" data-start="7.0"  data-duration="0.6"  data-track-index="302"></audio>
+    <audio id="sfx-ding-1"   class="clip" src="assets/sfx/ding.mp3"   data-start="11.0" data-duration="0.65" data-track-index="303"></audio>
+    <audio id="sfx-punch-1"  class="clip" src="assets/sfx/punch.mp3"  data-start="15.0" data-duration="0.22" data-track-index="304"></audio>
+
+    <!-- ===== SCENE CLIPS (kept alive full-duration; GSAP controls visibility) ===== -->
+    <div id="s-hook"     class="clip stage" data-start="0" data-duration="18" data-track-index="200">
+      <div class="kicker">[KICKER]</div>
+      <div class="big">[HOOK line — <span class="hl">scroll-stopping</span> claim]</div>
+    </div>
+    <div id="s-problem"  class="clip stage" data-start="0" data-duration="18" data-track-index="201">
+      <div class="big">[PROBLEM the<br/><span class="hl" style="color:var(--danger)">prospect</span> feels]</div>
+      <div class="sub">[one line of agitation]</div>
+    </div>
+    <div id="s-solution" class="clip stage" data-start="0" data-duration="18" data-track-index="202">
+      <div class="kicker">[CATEGORY]</div>
+      <div class="big">[SOLUTION /<br/><span class="hl">mechanism</span>]</div>
+    </div>
+    <div id="s-proof"    class="clip stage" data-start="0" data-duration="18" data-track-index="203">
+      <div class="proof-num">[NUM]</div>
+      <div class="proof-label">[PROOF_LABEL]</div>
+    </div>
+    <div id="s-cta"      class="clip stage" data-start="0" data-duration="18" data-track-index="204">
+      <div class="cta">[CTA — <span class="hl">do this now</span>]</div>
+      <div class="pill">[OFFER / URL]</div>
+    </div>
+
+    <script>
+      // Anchor every time below to whisper word starts (scripts/whisper-words.py).
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused:true, defaults:{ ease:"expo.out" } });
+
+      // progress bar across the whole ad
+      tl.to("#progress", { width:1080, duration:18, ease:"none" }, 0);
+
+      const beat = (sel, tIn, tOut) => {
+        tl.fromTo(sel, { opacity:0, y:40, scale:.94 },
+                       { opacity:1, y:0, scale:1, duration:.35, ease:"back.out(1.5)" }, tIn);
+        tl.to(sel, { opacity:0, y:-26, duration:.28, ease:"power2.in", overwrite:"auto" }, tOut);
+        tl.set(sel, { opacity:0 }, tOut + .3);            // hard-kill for seek safety
+      };
+      beat("#s-hook",     0.15, 3.0);
+      beat("#s-problem",  3.2,  7.0);
+      beat("#s-solution", 7.2, 11.0);
+      // proof number counts up
+      const pv = { n:0 };
+      tl.fromTo("#s-proof", { opacity:0, scale:.9 }, { opacity:1, scale:1, duration:.4 }, 11.2);
+      tl.to(pv, { n:[PROOF_TARGET], duration:2.2, ease:"power1.out",
+        onUpdate(){ document.querySelector("#s-proof .proof-num").textContent =
+          Math.round(pv.n).toLocaleString() + "[PROOF_SUFFIX]"; } }, 11.3);
+      tl.to("#s-proof", { opacity:0, y:-26, duration:.28, overwrite:"auto" }, 15.0);
+      tl.set("#s-proof", { opacity:0 }, 15.3);
+      // CTA holds to the end
+      tl.fromTo("#s-cta", { opacity:0, scale:.92 },
+                          { opacity:1, scale:1, duration:.4, ease:"back.out(1.6)" }, 15.2);
+      tl.fromTo("#s-cta .pill", { scale:.8 }, { scale:1, duration:.35, ease:"back.out(2)" }, 15.7);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </div>
+</body>
+</html>

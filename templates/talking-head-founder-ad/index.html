@@ -1,0 +1,170 @@
+<!doctype html>
+<!--
+  TEMPLATE: talking-head-founder-ad  (HyperFrames composition)
+  Presenter video + motion-graphic overlay rail + the proven SPEAKER PIP ARC
+  + whisper-synced captions + SFX rail. ~60s, 1080x1920, 30fps.
+  Generalized from a 23-iteration production founder ad.
+
+  REQUIRED USER ASSETS:
+    footage/speaker.mp4   re-encoded recording (scripts/reencode-footage.sh after scripts/cut-silences.py)
+    audio/vo.mp3          the cut VO/recording audio (separate track; speaker video is muted)
+  SWAP: :root brand tokens · [PRE_TITLE] [CAP_*] [LOCKUP_*] copy · all timings
+  PIP ARC (retime to your content, keep the shape):
+    0-3 cold-open motion hook (speaker hidden)  ->  speaker PIP in @2.8
+    -> speaker FULL @6.8  ->  speaker PIP @13 (graphics-heavy middle)
+    -> speaker FULL @46 (proof/CTA)  ->  lockup @ end (speaker out)
+  CAPTIONS: anchor data-start to actual whisper word starts (scripts/whisper-words.py). Split beats >5s.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1080, height=1920" />
+  <title>Founder Ad</title>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#0a0a0c; --ink:#f5f5f7; --mute:#8b8b95;
+      --accent:#10b981; --accent-light:#6ee7b7; --accent-deep:#064e3b;
+      --warn:#f59e0b; --danger:#ef4444;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{width:1080px;height:1920px;overflow:hidden;background:var(--bg);
+      color:var(--ink);font-family:"Inter",ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+    .clip{opacity:0}
+    /* Speaker fills frame; PIP achieved via GSAP scale (transform-origin bottom-right). */
+    #speaker{position:absolute;inset:0;width:1080px;height:1920px;object-fit:cover;transform-origin:bottom right}
+    .speaker-pip-border{position:absolute;right:28px;bottom:28px;width:322px;height:572px;
+      border-radius:24px;border:3px solid var(--accent);box-shadow:0 16px 48px rgba(16,185,129,.4)}
+    /* Scrim keeps captions legible over the video. */
+    #scrim-top{position:absolute;inset:0;background:linear-gradient(180deg,
+      rgba(10,10,12,.55) 0%,transparent 28%,transparent 64%,rgba(10,10,12,.78) 100%)}
+    .caption{position:absolute;left:60px;right:60px;top:1180px;
+      background:rgba(10,10,12,.86);backdrop-filter:blur(14px);
+      border:2px solid var(--accent);border-radius:22px;padding:28px 32px;text-align:center;
+      font-size:56px;font-weight:800;line-height:1.16;letter-spacing:-.012em;color:#fff;
+      box-shadow:0 20px 60px rgba(0,0,0,.6)}
+    .caption .danger{color:var(--danger)} .caption .hl{color:var(--accent-light)}
+    .stage{position:absolute;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;text-align:center;padding:0 90px}
+    #pre-title .kicker{font-size:34px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-light)}
+    #pre-title .big{font-size:120px;font-weight:900;line-height:1.02;letter-spacing:-.02em;margin-top:24px}
+    #pre-title .big .hl{color:var(--accent)}
+    .whip-pan{position:absolute;inset:0;background:var(--bg)}
+    #lockup{position:absolute;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;text-align:center;padding:0 90px;background:var(--bg)}
+    #lockup .logo{font-size:96px;font-weight:900;letter-spacing:-.02em}
+    #lockup .logo .hl{color:var(--accent)}
+    #lockup .tag{font-size:46px;font-weight:600;color:var(--mute);margin-top:22px}
+    #lockup .pill{margin-top:50px;font-size:46px;font-weight:800;color:var(--bg);
+      background:var(--accent);padding:26px 64px;border-radius:999px}
+  </style>
+</head>
+<body>
+  <div id="root" data-composition-id="main"
+       data-start="0" data-duration="60"
+       data-width="1080" data-height="1920" data-fps="30">
+
+    <!-- Speaker video (track 1) — MUTED; VO is a separate audio track -->
+    <video id="speaker" class="clip" muted src="footage/speaker.mp4"
+           data-start="0" data-duration="57" data-track-index="1"></video>
+
+    <!-- Audio. track 0 = VO. Optional music bed: add a music-bed audio clip on
+         data-track-index 500, mixed -18dB under the VO (see references/audio-sources). -->
+    <audio id="vo" class="clip" src="audio/vo.mp3" data-start="0" data-duration="59.9" data-track-index="0"></audio>
+
+    <!-- SFX rail (300+) — Mixkit via scripts/fetch-sfx.sh; retime to whisper words -->
+    <audio id="sfx-ding-open" class="clip" src="assets/sfx/ding.mp3"  data-start="2.0"  data-duration="0.68" data-track-index="300"></audio>
+    <audio id="sfx-whoosh-1"  class="clip" src="assets/sfx/whoosh.mp3" data-start="6.7" data-duration="0.6"  data-track-index="301"></audio>
+    <audio id="sfx-stamp-1"   class="clip" src="assets/sfx/stamp.mp3" data-start="13.0" data-duration="0.55" data-track-index="302"></audio>
+    <audio id="sfx-punch-cta" class="clip" src="assets/sfx/punch.mp3" data-start="46.0" data-duration="0.22" data-track-index="303"></audio>
+
+    <div id="scrim-top" class="clip" data-start="0" data-duration="57" data-track-index="2"></div>
+
+    <!-- Whip-pan transition flashes at scene boundaries (0.3s each) -->
+    <div id="whip-1" class="whip-pan clip" data-start="0" data-duration="60" data-track-index="6"></div>
+    <div id="whip-2" class="whip-pan clip" data-start="0" data-duration="60" data-track-index="7"></div>
+
+    <!-- Cold-open motion hook (0-3s, speaker hidden) -->
+    <div id="pre-title" class="stage clip" data-start="0" data-duration="60" data-track-index="200">
+      <div class="kicker">[KICKER]</div>
+      <div class="big">[HOOK —<br/><span class="hl">pattern interrupt</span>]</div>
+    </div>
+
+    <!-- Motion-graphic overlay shown while speaker is in PIP (middle act) -->
+    <div id="mg-row" class="stage clip" data-start="0" data-duration="60" data-track-index="201">
+      <div class="big" style="font-size:96px;font-weight:900">[PROOF POINT or<br/><span style="color:var(--accent)">3-step mechanism</span>]</div>
+    </div>
+
+    <!-- PIP borders -->
+    <div id="pip-border-1" class="speaker-pip-border clip" data-start="0" data-duration="60" data-track-index="4"></div>
+    <div id="pip-border-2" class="speaker-pip-border clip" data-start="0" data-duration="60" data-track-index="5"></div>
+
+    <!-- Captions (track 100+) — data-start = whisper word start -->
+    <div id="cap-1" class="caption clip" data-start="4.0"  data-duration="3.0" data-track-index="100">[Caption beat 1 — <span class="hl">short</span>]</div>
+    <div id="cap-2" class="caption clip" data-start="16.0" data-duration="3.0" data-track-index="101">[Caption beat 2]</div>
+    <div id="cap-3" class="caption clip" data-start="30.0" data-duration="3.0" data-track-index="102">You're <span class="danger">NOT</span> [in the conversation].</div>
+
+    <!-- Closing lockup (speaker out) -->
+    <div id="lockup" class="clip" data-start="0" data-duration="60" data-track-index="230">
+      <div class="logo">[BRAND<span class="hl">NAME</span>]</div>
+      <div class="tag">[positioning line]</div>
+      <div class="pill">[CTA / URL]</div>
+    </div>
+
+    <script>
+      // Times below MUST be re-anchored to your whisper word starts.
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused:true, defaults:{ ease:"expo.out" } });
+
+      // 0-3 cold-open motion hook
+      tl.fromTo("#pre-title", { opacity:0, y:30, scale:.94 },
+                              { opacity:1, y:0, scale:1, duration:.4, ease:"back.out(1.6)" }, 0.0);
+      tl.to("#pre-title", { opacity:0, y:-22, duration:.3, ease:"power2.in", overwrite:"auto" }, 2.6);
+      tl.set("#pre-title", { opacity:0 }, 2.95);
+
+      // speaker enters as PIP @2.8 (start scaled-down)
+      gsap.set("#speaker", { scale:.296, x:-28, y:-28, opacity:0 });
+      tl.to("#speaker",      { opacity:1, duration:.6 }, 2.8);
+      tl.to("#pip-border-1", { opacity:1, duration:.4 }, 2.8);
+
+      // whip-pan -> speaker FULL @6.8
+      tl.to("#whip-1", { opacity:1, duration:.12, ease:"none" }, 6.7);
+      tl.to("#whip-1", { opacity:0, duration:.18, ease:"none", overwrite:"auto" }, 6.85);
+      tl.set("#whip-1", { opacity:0 }, 7.05);
+      tl.to("#speaker", { scale:1, x:0, y:0, duration:.55, ease:"power3.inOut" }, 6.8);
+      tl.to("#pip-border-1", { opacity:0, duration:.35, overwrite:"auto" }, 6.8);
+      tl.set("#pip-border-1", { opacity:0 }, 7.2);
+
+      // speaker SHRINKS to PIP @13 — motion-graphic row takes the stage
+      tl.to("#speaker", { scale:.296, x:-28, y:-28, duration:.5, ease:"power3.inOut" }, 13.0);
+      tl.to("#pip-border-2", { opacity:1, duration:.4 }, 13.0);
+      tl.fromTo("#mg-row", { opacity:0, y:40 }, { opacity:1, y:0, duration:.45 }, 13.4);
+      tl.to("#mg-row", { opacity:0, y:-30, duration:.3, overwrite:"auto" }, 44.0);
+      tl.set("#mg-row", { opacity:0 }, 44.3);
+
+      // whip-pan -> speaker FULL @46 (proof + CTA, full presence)
+      tl.to("#whip-2", { opacity:1, duration:.12, ease:"none" }, 45.9);
+      tl.to("#whip-2", { opacity:0, duration:.18, ease:"none", overwrite:"auto" }, 46.05);
+      tl.set("#whip-2", { opacity:0 }, 46.25);
+      tl.to("#speaker", { scale:1, x:0, y:0, duration:.55, ease:"power3.inOut" }, 46.0);
+      tl.to("#pip-border-2", { opacity:0, duration:.4, overwrite:"auto" }, 46.0);
+      tl.set("#pip-border-2", { opacity:0 }, 46.4);
+
+      // captions (fade in/out; anchored to whisper words)
+      [["#cap-1",4.0,7.0],["#cap-2",16.0,19.0],["#cap-3",30.0,33.0]].forEach(([s,a,b])=>{
+        tl.to(s,{opacity:1,duration:.22,ease:"power2.out"},a);
+        tl.to(s,{opacity:0,duration:.22,ease:"power2.in",overwrite:"auto"},b);
+        tl.set(s,{opacity:0},b+.25);
+      });
+
+      // closing lockup (speaker out)
+      tl.to("#speaker", { opacity:0, duration:.4 }, 57.0);
+      tl.fromTo("#lockup", { opacity:0, scale:.94 }, { opacity:1, scale:1, duration:.5, ease:"back.out(1.5)" }, 57.0);
+      tl.fromTo("#lockup .pill", { scale:.8 }, { scale:1, duration:.35, ease:"back.out(2)" }, 57.8);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </div>
+</body>
+</html>

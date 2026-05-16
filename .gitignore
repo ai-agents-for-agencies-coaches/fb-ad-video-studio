@@ -1,0 +1,12 @@
+node_modules/
+*.log
+.DS_Store
+renders/
+*.mp4
+!examples/*.mp4
+footage/*.mp4
+footage/*.mov
+audio/*.mp3
+assets/sfx/*.mp3
+.tmp/
+__pycache__/

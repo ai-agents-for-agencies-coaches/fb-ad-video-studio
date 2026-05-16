@@ -1,0 +1,22 @@
+{
+  "name": "fb-ad-video-studio",
+  "version": "1.0.0",
+  "license": "MIT",
+  "description": "High-converting FB/IG/TikTok video ads as HyperFrames compositions \u2014 motion-graphics spots + talking-head founder ads, with a battle-tested ad structure and reverse-template workflow.",
+  "scripts": {
+    "tts": "python3 scripts/tts.py",
+    "words": "python3 scripts/whisper-words.py",
+    "cut": "python3 scripts/cut-silences.py",
+    "sfx": "bash scripts/fetch-sfx.sh",
+    "reencode": "bash scripts/reencode-footage.sh",
+    "render": "bash scripts/render.sh",
+    "lint": "npx hyperframes lint",
+    "check": "npx hyperframes lint && npx hyperframes inspect"
+  },
+  "devDependencies": {
+    "hyperframes": "latest"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
