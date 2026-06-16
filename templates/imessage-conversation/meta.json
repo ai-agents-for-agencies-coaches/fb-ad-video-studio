@@ -1,0 +1,11 @@
+{
+  "id": "imessage-conversation",
+  "name": "imessage-conversation",
+  "description": "Believable animated iMessage / text-thread ad. An illustrative (not real) conversation builds in real time with typing indicators, bubble pop-in/slide-up, auto-scroll, a link-preview CTA reveal, and a Delivered receipt. No presenter, no voiceover needed.",
+  "length": "~10-14s",
+  "format": "1080x1350 (4:5) default; supports 1080x1920 and 1080x1080",
+  "needs": "Just the message script (the back-and-forth texts) + a CTA title/domain.",
+  "bestFor": "Social proof / curiosity / 'a friend told me' angle. Word-of-mouth recommendation framing without on-camera talent.",
+  "dramatizationNote": "showDramatization defaults true and bakes a muted 'Dramatization' top rail. Fabricated/illustrative conversations MUST be disclosed (FTC endorsement guides + Meta advertising policy). Only set false if the thread is genuinely real and you have rights to display it. Keeping it on prevents the 'fake testimonial labeled as real' failure mode.",
+  "parameterized": "contact {name, initial, emoji, service, avatar}, header.timestamp, messages[] {from in|out, text, typingBefore, tight}, linkPreview {title, domain, thumbnail}, timing knobs, showDramatization. DOM + GSAP timeline are built from CONFIG at runtime — edit data, not animation code."
+}
