@@ -7,10 +7,11 @@ description: Produce high-converting Facebook/Instagram/TikTok ad VIDEOS — mot
 
 Direct-response **video ads** built as code. HyperFrames (HeyGen's HTML-video framework) is the engine; this skill is the opinionated FB/IG/TikTok ad recipe layered on top — distilled from 23 production iterations of a real founder ad.
 
-It produces two families:
+It produces three families:
 
 1. **Motion-graphics spot** — kinetic typography + Lottie/CSS motion + VO + SFX. No presenter footage. Fully self-serve, most templatable, fastest.
 2. **Talking-head founder ad** — presenter video with a motion-graphic overlay rail, the proven **speaker PIP arc**, synced captions, and an SFX rail. Needs a user-supplied recording.
+3. **iMessage conversation** — a believable animated text thread (typing dots, bubble pop-in/slide-up, auto-scroll, link-preview CTA) that builds in real time. No presenter, no VO. Social-proof / "a friend told me" angle from a message script alone.
 
 ## Prerequisites (do not reimplement the framework)
 
@@ -43,7 +44,7 @@ proven structure/pacing; only the brand layer comes from DESIGN.md.
 
 **Don't use:** static images → `image-studio`. Long-form/explainer/YouTube content → generic `hyperframes`. AI-generated talking avatars → HeyGen avatar tools. Diagrams → `excalidraw`.
 
-## The two templates
+## The three templates
 
 Copy a folder from `templates/` into a fresh project and edit.
 
@@ -51,6 +52,7 @@ Copy a folder from `templates/` into a fresh project and edit.
 |----------|--------|-------|----------|
 | `motion-graphics-spot/` | 15–30s | VO script only | Offer/feature ads, retargeting, no on-camera talent |
 | `talking-head-founder-ad/` | 45–75s | Presenter recording + VO | Founder story, trust/authority, cold traffic |
+| `imessage-conversation/` | ~10–14s | Message script only | Social-proof / curiosity / friend-recommendation ads (illustrative text thread, no talent or VO) |
 
 Both ship as real HyperFrames compositions (`index.html` + `hyperframes.json` + `meta.json`) with **generic brand tokens** (`--accent`, `--ink`, …) and `[BRACKET]` placeholder copy. They are scaffolds — rework freely.
 

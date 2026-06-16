@@ -1,0 +1,431 @@
+<!doctype html>
+<!--
+  TEMPLATE: imessage-conversation  (HyperFrames composition)
+  Believable animated iMessage / text-thread ad. No presenter, no VO needed.
+  A conversation builds in real time: iOS status bar + contact header, typing
+  indicators (pulsing dots) before incoming texts, bubble pop-in (gray, left) /
+  slide-up (accent, right), auto-scroll to newest, a link-preview reveal at the
+  end, and a "Delivered" receipt. ~10-14s, 1080x1350 (4:5) default.
+
+  HOW TO USE THIS TEMPLATE:
+    Edit ONLY the CONFIG object below. The DOM and the GSAP timeline are BUILT
+    from CONFIG at runtime, so you never touch animation code — just the data.
+
+  WHAT YOU EDIT (CONFIG):
+    contact      { name, initial, service, timestamp }     header identity
+    messages[]   { from:"in"|"out", text, typingBefore }   the script (in order)
+                 - from "in"  = incoming  (gray bubble, left,  pop-in)
+                 - from "out" = outgoing  (accent bubble, right, slide-up)
+                 - typingBefore (ms, optional, "in" only) = typing-dots dwell
+                   before that incoming message lands. Omit/0 = no typing bubble.
+    linkPreview  { title, domain, thumbnail }    final outgoing link card (CTA)
+    timing       per-message beat, typing/dots, send pacing, total
+    showDramatization  true (default) -> bakes the "Dramatization" rail
+
+  WHY THE DRAMATIZATION RAIL (keep it on by default):
+    This is an illustrative/fabricated conversation, not a real screen recording
+    of a real customer. FTC endorsement guides + Meta advertising policy require
+    that simulated/dramatized testimonials be disclosed so viewers aren't misled
+    into reading it as a genuine, captured chat. The muted top rail is that
+    disclosure. Only set showDramatization:false if the thread is genuinely real
+    AND you have rights to display it. Default = true.
+
+  BRAND TOKENS (:root):
+    --accent  CTA + outgoing-bubble + link color (default iMessage blue #007AFF)
+    --ink     primary text     --bg  page bg     --mute  secondary text
+    Incoming bubbles keep authentic iMessage gray (#E9E9EB) so it reads as a real
+    thread; only the OUTGOING bubble takes --accent.
+
+  FORMATS: default 1080x1350 (4:5). Also supports 1080x1920 (Reels/Stories) and
+    1080x1080 (square) — change data-width/data-height on #root and the html/body
+    width/height in :root-adjacent rules; the thread flexes to fill.
+
+  Workflow: edit CONFIG -> npx hyperframes lint && npx hyperframes inspect -> render.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1080, height=1350" />
+<title>iMessage Conversation</title>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  :root{
+    /* brand tokens — swap these (default accent = iMessage blue) */
+    --accent:#007AFF; --ink:#000000; --bg:#ffffff; --mute:#8a8a8e;
+    /* authentic iMessage incoming gray — keep for realism */
+    --in-bubble:#E9E9EB; --in-text:#000000;
+    --chrome:#f6f6f6; --hairline:#d7d7da;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+  html,body{width:1080px;height:1350px;background:var(--bg);}
+  body{font-family:'Inter','SF Pro Text','Helvetica Neue',Arial,sans-serif;}
+  .emoji{font-family:'Apple Color Emoji','Noto Color Emoji','Segoe UI Emoji',sans-serif;}
+
+  [data-composition-id="im"]{position:relative;width:1080px;height:1350px;overflow:hidden;background:var(--bg);}
+  .card{position:relative;width:1080px;height:1350px;overflow:hidden;background:var(--bg);
+    display:flex;flex-direction:column;}
+
+  /* disclosure rail (FTC/Meta) */
+  .caprail{height:74px;background:#0e1116;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .cap{font-size:22px;font-weight:500;color:#6b7280;letter-spacing:.6px;text-transform:uppercase;}
+
+  .screen{position:relative;flex:1;background:var(--bg);display:flex;flex-direction:column;min-height:0;}
+
+  /* status bar */
+  .statusbar{height:62px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 44px 0 50px;background:var(--chrome);flex:0 0 auto;}
+  .sb-time{font-size:30px;font-weight:600;color:var(--ink);letter-spacing:.3px;font-feature-settings:"tnum";}
+  .sb-right{display:flex;align-items:center;gap:14px;}
+  .signal{display:flex;align-items:flex-end;gap:5px;height:24px;}
+  .signal span{width:7px;background:var(--ink);border-radius:2px;}
+  .signal span:nth-child(1){height:9px;}
+  .signal span:nth-child(2){height:14px;}
+  .signal span:nth-child(3){height:19px;}
+  .signal span:nth-child(4){height:24px;}
+  .wifi{width:34px;height:24px;}
+  .batt{width:50px;height:24px;border:2px solid rgba(0,0,0,.5);border-radius:6px;position:relative;display:flex;align-items:center;padding:2px;}
+  .batt::after{content:"";position:absolute;right:-6px;top:7px;width:4px;height:10px;background:rgba(0,0,0,.5);border-radius:0 2px 2px 0;}
+  .batt .lvl{height:100%;width:78%;background:var(--ink);border-radius:3px;}
+
+  /* contact header */
+  .navbar{background:var(--chrome);border-bottom:1px solid var(--hairline);flex:0 0 auto;
+    display:flex;flex-direction:column;align-items:center;padding:8px 0 16px;position:relative;}
+  .chev{position:absolute;left:30px;top:14px;display:flex;align-items:center;color:var(--accent);}
+  .chev .badge{font-size:24px;font-weight:600;margin-left:4px;}
+  .videocam{position:absolute;right:36px;top:18px;color:var(--accent);}
+  .avatar{width:84px;height:84px;border-radius:50%;
+    background:linear-gradient(160deg,#b6c0cc,#8b97a6);
+    display:flex;align-items:center;justify-content:center;
+    font-size:42px;font-weight:600;color:#fff;overflow:hidden;}
+  .avatar img{width:100%;height:100%;object-fit:cover;}
+  .cname{margin-top:8px;font-size:27px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:6px;}
+  .cname .emoji{font-size:25px;}
+  .cservice{margin-top:2px;font-size:19px;color:var(--mute);font-weight:500;letter-spacing:.3px;}
+
+  /* thread viewport (clips overflow) + scrolling inner */
+  .thread{position:relative;flex:1;background:var(--bg);overflow:hidden;min-height:0;}
+  .scroll{position:absolute;left:0;right:0;top:0;
+    padding:24px 30px 14px;display:flex;flex-direction:column;gap:6px;
+    will-change:transform;}
+  .daystamp{text-align:center;font-size:20px;color:var(--mute);font-weight:600;margin:6px 0 14px;}
+  .daystamp b{color:#5b5b5f;font-weight:700;}
+
+  .row{display:flex;width:100%;margin-top:4px;}
+  .row.in{justify-content:flex-start;}
+  .row.out{justify-content:flex-end;}
+  .row.tight{margin-top:-2px;}
+
+  .bubble{max-width:72%;font-size:31px;line-height:1.3;padding:18px 26px;position:relative;
+    word-wrap:break-word;transform-origin:left bottom;}
+  .out .bubble{transform-origin:right bottom;}
+  .in .bubble{background:var(--in-bubble);color:var(--in-text);border-radius:26px 26px 26px 8px;}
+  .out .bubble{background:var(--accent);color:#fff;border-radius:26px 26px 8px 26px;}
+  .bubble .emoji{font-size:30px;}
+
+  /* typing indicator bubble */
+  .typing{display:flex;align-items:center;gap:10px;background:var(--in-bubble);
+    border-radius:26px 26px 26px 8px;padding:22px 28px;transform-origin:left bottom;}
+  .typing .dot{width:16px;height:16px;border-radius:50%;background:#9a9a9f;}
+
+  .receipt{align-self:flex-end;font-size:19px;color:var(--mute);font-weight:600;
+    margin:4px 6px 0 0;text-align:right;}
+
+  /* link preview card */
+  .lp{max-width:72%;border-radius:24px;overflow:hidden;background:#f1f1f3;
+    box-shadow:0 1px 0 rgba(0,0,0,.06);transform-origin:right bottom;}
+  .lp-thumb{height:230px;position:relative;overflow:hidden;
+    background:
+      linear-gradient(180deg,rgba(8,18,30,.05),rgba(8,18,30,.28)),
+      linear-gradient(160deg,#4a6884 0%,#33536f 45%,#22384c 100%);
+    background-size:cover;background-position:center;}
+  .lp-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  .lp-meta{padding:18px 22px 20px;background:#f1f1f3;}
+  .lp-title{font-size:27px;font-weight:600;color:#000;line-height:1.25;}
+  .lp-domain{font-size:21px;color:var(--mute);font-weight:500;margin-top:6px;letter-spacing:.2px;}
+
+  /* input bar */
+  .inputbar{background:var(--chrome);border-top:1px solid var(--hairline);flex:0 0 auto;
+    display:flex;align-items:center;gap:18px;padding:18px 26px 22px;}
+  .plus{width:46px;height:46px;border-radius:50%;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;}
+  .field{flex:1;height:58px;border:1.5px solid #c8c8cc;border-radius:30px;
+    display:flex;align-items:center;padding:0 24px;background:#fff;}
+  .field .ph{font-size:26px;color:#a3a3a8;font-weight:400;}
+  .field .mic{margin-left:auto;color:#a3a3a8;}
+  .homebar{height:46px;background:var(--chrome);display:flex;align-items:flex-start;justify-content:center;padding-top:6px;flex:0 0 auto;}
+  .homebar .pill{width:280px;height:8px;border-radius:5px;background:var(--ink);}
+</style>
+</head>
+<body>
+  <div id="root" data-composition-id="im"
+       data-start="0" data-duration="11"
+       data-width="1080" data-height="1350" data-fps="30">
+
+    <div class="card">
+
+      <!-- disclosure rail (rendered only when CONFIG.showDramatization) -->
+      <div class="caprail" id="caprail"><div class="cap">Dramatization</div></div>
+
+      <div class="screen">
+        <!-- status bar -->
+        <div class="statusbar">
+          <div class="sb-time">9:41</div>
+          <div class="sb-right">
+            <div class="signal"><span></span><span></span><span></span><span></span></div>
+            <svg class="wifi" viewBox="0 0 34 24" fill="none">
+              <path d="M17 22.5l4.2-5.3a5.4 5.4 0 00-8.4 0L17 22.5z" fill="#000"/>
+              <path d="M9.3 12.6a12 12 0 0115.4 0" stroke="#000" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+              <path d="M4.8 7.7a18.5 18.5 0 0124.4 0" stroke="#000" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+            </svg>
+            <div class="batt"><div class="lvl"></div></div>
+          </div>
+        </div>
+
+        <!-- contact header (name/initial/service filled from CONFIG) -->
+        <div class="navbar">
+          <div class="chev">
+            <svg width="20" height="34" viewBox="0 0 20 34" fill="none"><path d="M16 3L4 17l12 14" stroke="#007AFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--accent)"/></svg>
+            <span class="badge" style="color:var(--accent)">12</span>
+          </div>
+          <svg class="videocam" width="38" height="26" viewBox="0 0 38 26" fill="none"><rect x="2" y="4" width="22" height="18" rx="5" stroke="#007AFF" stroke-width="3" style="stroke:var(--accent)"/><path d="M26 11l9-5v14l-9-5z" stroke="#007AFF" stroke-width="3" stroke-linejoin="round" style="stroke:var(--accent)"/></svg>
+          <div class="avatar" id="avatar"></div>
+          <div class="cname" id="cname"></div>
+          <div class="cservice" id="cservice"></div>
+        </div>
+
+        <!-- thread (rows injected from CONFIG). overflow is intentional: the
+             thread clips while #scroll translates up (auto-scroll mechanic). -->
+        <div class="thread" data-layout-allow-overflow>
+          <div class="scroll" id="scroll" data-layout-allow-overflow>
+            <div class="daystamp" id="daystamp"></div>
+          </div>
+        </div>
+
+        <!-- input bar -->
+        <div class="inputbar">
+          <div class="plus">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" fill="#e3e3e6"/><path d="M20 12v16M12 20h16" stroke="#8a8a8e" stroke-width="3" stroke-linecap="round"/></svg>
+          </div>
+          <div class="field">
+            <span class="ph">iMessage</span>
+            <svg class="mic" width="26" height="34" viewBox="0 0 26 34" fill="none"><rect x="8" y="2" width="10" height="18" rx="5" stroke="#a3a3a8" stroke-width="2.6"/><path d="M4 15a9 9 0 0018 0M13 24v6M8 31h10" stroke="#a3a3a8" stroke-width="2.6" stroke-linecap="round"/></svg>
+          </div>
+        </div>
+        <div class="homebar"><div class="pill"></div></div>
+
+      </div>
+    </div>
+
+    <script>
+      /* ============================================================
+         CONFIG — EDIT ONLY THIS. The thread + animation build from it.
+         [BRACKET] = obvious placeholder copy; replace it.
+         ============================================================ */
+      const CONFIG = {
+        showDramatization: true,           // keep true unless thread is genuinely real (FTC/Meta)
+
+        contact: {
+          name: "[CONTACT NAME]",          // e.g. "Jenna"
+          initial: "[X]",                  // avatar letter, e.g. "J"
+          emoji: "🏡",                      // optional emoji beside the name ("" to hide)
+          service: "iMessage",             // sublabel under the name
+          avatar: ""                       // optional avatar image URL ("" = initial only)
+        },
+        header: { timestamp: "[TODAY 0:00 PM]" },   // day-stamp line, e.g. "Today 2:11 PM"
+
+        // The script, in order. typingBefore (ms) only applies to "in" messages.
+        messages: [
+          { from: "in",  text: "[INCOMING MESSAGE — the hook]", typingBefore: 800 },
+          { from: "out", text: "[OUTGOING REPLY]" },
+          { from: "out", text: "[OUTGOING — the proof / offer line]", tight: true },
+          { from: "in",  text: "[INCOMING — objection / surprise]", typingBefore: 700 },
+          { from: "out", text: "[OUTGOING — handles the objection]" },
+          { from: "in",  text: "[INCOMING — asks for the link]",     typingBefore: 650 }
+          // The link-preview card (below) is appended automatically as the final OUTGOING message.
+        ],
+
+        // Final outgoing message: a link-preview card (the CTA).
+        linkPreview: {
+          title: "[CTA TITLE]",            // e.g. "See if you qualify — Tampa"
+          domain: "[yourdomain.com]",      // e.g. "getstarted.example.com"
+          thumbnail: ""                    // optional image URL ("" = stylized gradient placeholder)
+        },
+
+        // Timing knobs (seconds unless noted).
+        timing: {
+          startDelay: 0.5,    // gap before the first typing/message
+          typingMin: 0.55,    // floor for a typing-dots window if typingBefore is small
+          sendGap: 0.50,      // gap between consecutive outgoing sends
+          afterIn: 0.63,      // gap after an incoming lands before the next beat
+          scrollDur: 0.58,    // auto-scroll glide
+          lpReveal: 0.5,      // link-preview slide-up duration
+          tailHold: 1.6       // hold on the final card after "Delivered"
+        }
+      };
+
+      /* ============================================================
+         ENGINE — builds DOM + GSAP timeline from CONFIG. Don't edit
+         unless you're changing the mechanics themselves.
+         ============================================================ */
+      (function () {
+        // ---- disclosure rail ----
+        if (!CONFIG.showDramatization) {
+          const r = document.getElementById("caprail");
+          if (r) r.remove();
+        }
+        // ---- header ----
+        const av = document.getElementById("avatar");
+        if (CONFIG.contact.avatar) {
+          const img = document.createElement("img");
+          img.src = CONFIG.contact.avatar; av.appendChild(img);
+        } else { av.textContent = CONFIG.contact.initial; }
+        const cn = document.getElementById("cname");
+        cn.textContent = CONFIG.contact.name;
+        if (CONFIG.contact.emoji) {
+          const e = document.createElement("span");
+          e.className = "emoji"; e.textContent = CONFIG.contact.emoji;
+          cn.appendChild(document.createTextNode(" ")); cn.appendChild(e);
+        }
+        document.getElementById("cservice").textContent = CONFIG.contact.service;
+
+        // ---- day stamp ----
+        const ds = document.getElementById("daystamp");
+        const parts = String(CONFIG.header.timestamp).split(" ");
+        const b = document.createElement("b"); b.textContent = parts.shift() || "";
+        ds.appendChild(b);
+        if (parts.length) ds.appendChild(document.createTextNode(" " + parts.join(" ")));
+
+        // ---- build message rows (script + appended link-preview as final "out") ----
+        const scroll = document.getElementById("scroll");
+        const beats = [];                 // {kind, el, typingEl?, typingBefore}
+        const items = CONFIG.messages.slice();
+        items.push({ from: "out", _lp: true });   // link preview is the final outgoing
+
+        let prevFrom = null;
+        items.forEach((m) => {
+          const incoming = m.from === "in";
+          let typingEl = null;
+          if (incoming && m.typingBefore) {
+            const tr = document.createElement("div");
+            tr.className = "row in";
+            tr.innerHTML = '<div class="typing"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span></div>';
+            scroll.appendChild(tr); typingEl = tr;
+          }
+          const row = document.createElement("div");
+          row.className = "row " + m.from + (m.tight ? " tight" : "");
+          if (m._lp) {
+            row.innerHTML =
+              '<div class="lp"><div class="lp-thumb">' +
+              (CONFIG.linkPreview.thumbnail
+                ? '<img src="' + CONFIG.linkPreview.thumbnail + '" alt="">'
+                : '<div style="position:absolute;right:60px;top:34px;width:70px;height:70px;border-radius:50%;background:radial-gradient(circle,#ffe9b0,#ffd271);opacity:.85;"></div>' +
+                  '<div style="position:absolute;left:7%;bottom:0;width:0;height:0;border-left:150px solid transparent;border-right:150px solid transparent;border-bottom:120px solid #6f8aa3;"></div>' +
+                  '<div style="position:absolute;left:34%;bottom:0;width:0;height:0;border-left:200px solid transparent;border-right:200px solid transparent;border-bottom:155px solid #56738f;"></div>') +
+              '</div><div class="lp-meta"><div class="lp-title"></div><div class="lp-domain"></div></div></div>';
+            row.querySelector(".lp-title").textContent = CONFIG.linkPreview.title;
+            row.querySelector(".lp-domain").textContent = CONFIG.linkPreview.domain;
+          } else {
+            const bub = document.createElement("div");
+            bub.className = "bubble"; bub.textContent = m.text;
+            row.appendChild(bub);
+          }
+          scroll.appendChild(row);
+          beats.push({ incoming, lp: !!m._lp, el: row, typingEl, typingBefore: m.typingBefore || 0, sameSide: m.from === prevFrom });
+          prevFrom = m.from;
+        });
+
+        // receipt under the final message
+        const receipt = document.createElement("div");
+        receipt.className = "receipt"; receipt.textContent = "Delivered";
+        scroll.appendChild(receipt);
+
+        // ---- timeline ----
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+        const T = CONFIG.timing;
+
+        // initial hidden state
+        beats.forEach((bt) => {
+          tl.set(bt.el, { autoAlpha: 0 }, 0);
+          if (bt.typingEl) tl.set(bt.typingEl.querySelector(".typing"), { scale: 0.6, opacity: 0 }, 0);
+          if (bt.lp)            tl.set(bt.el.querySelector(".lp"),     { y: 44, scale: 0.92 }, 0);
+          else if (bt.incoming) tl.set(bt.el.querySelector(".bubble"), { scale: 0.7 }, 0);
+          else                  tl.set(bt.el.querySelector(".bubble"), { y: 36, scale: 0.94 }, 0);
+        });
+        tl.set("#scroll", { y: 0 }, 0);
+        tl.set(receipt,   { autoAlpha: 0, y: 8 }, 0);
+
+        // pulsing typing dots across a [start,end] window
+        function dotsLoop(el, start, end) {
+          const cyc = 0.6;
+          const n = Math.max(1, Math.ceil((end - start) / cyc));
+          for (let i = 0; i < n; i++) {
+            const t0 = start + i * cyc;
+            if (t0 >= end) break;
+            const d1 = el.querySelector(".d1"), d2 = el.querySelector(".d2"), d3 = el.querySelector(".d3");
+            tl.to(d1, { opacity: 1, duration: 0.18, ease: "sine.out", overwrite: "auto" }, t0)
+              .to(d1, { opacity: 0.35, duration: 0.30, ease: "sine.in", overwrite: "auto" }, t0 + 0.18);
+            tl.to(d2, { opacity: 1, duration: 0.18, ease: "sine.out", overwrite: "auto" }, t0 + 0.12)
+              .to(d2, { opacity: 0.35, duration: 0.30, ease: "sine.in", overwrite: "auto" }, t0 + 0.30);
+            tl.to(d3, { opacity: 1, duration: 0.18, ease: "sine.out", overwrite: "auto" }, t0 + 0.24)
+              .to(d3, { opacity: 0.35, duration: 0.30, ease: "sine.in", overwrite: "auto" }, t0 + 0.42);
+          }
+        }
+
+        // auto-scroll: once the running content height exceeds the viewport,
+        // glide the thread up so the newest message stays in view.
+        const threadH = 894;              // ~thread viewport height at 1080x1350
+        let scrollY = 0;
+        function maybeScroll(t) {
+          // measure where the bottom of the scroll content currently sits
+          const contentH = scroll.scrollHeight;
+          const overflow = contentH - threadH;
+          if (overflow > scrollY + 8) {
+            scrollY = overflow + 30;        // a little breathing room below newest
+            tl.to("#scroll", { y: -scrollY, duration: T.scrollDur, ease: "power2.inOut" }, t);
+          }
+        }
+
+        // walk the beats, advancing a cursor `t`
+        let t = T.startDelay;
+        beats.forEach((bt, idx) => {
+          if (bt.typingEl) {
+            const dwell = Math.max(T.typingMin, bt.typingBefore / 1000);
+            const ty = bt.typingEl.querySelector(".typing");
+            tl.set(bt.typingEl, { autoAlpha: 1 }, t);
+            tl.to(ty, { scale: 1, opacity: 1, duration: 0.28, ease: "back.out(2)" }, t);
+            dotsLoop(bt.typingEl, t + 0.22, t + dwell);
+            tl.to(ty, { scale: 0.6, opacity: 0, duration: 0.18, ease: "power2.in" }, t + dwell + 0.05);
+            tl.set(bt.typingEl, { autoAlpha: 0 }, t + dwell + 0.25);
+            t += dwell + 0.07;
+          }
+
+          // pre-scroll so the landing message has room (esp. the tall link card)
+          maybeScroll(t - 0.1);
+
+          tl.set(bt.el, { autoAlpha: 1 }, t);
+          if (bt.lp) {
+            tl.to(bt.el.querySelector(".lp"), { y: 0, scale: 1, duration: T.lpReveal, ease: "back.out(1.6)" }, t);
+            t += T.lpReveal + 0.2;
+          } else if (bt.incoming) {
+            tl.to(bt.el.querySelector(".bubble"), { scale: 1, duration: 0.34, ease: "back.out(2.2)" }, t);  // pop-in
+            t += T.afterIn;
+          } else {
+            tl.to(bt.el.querySelector(".bubble"), { y: 0, scale: 1, duration: 0.34, ease: "back.out(1.8)" }, t); // slide-up
+            t += (bt.sameSide ? T.sendGap : T.afterIn);
+          }
+        });
+
+        // Delivered receipt after the final card
+        tl.to(receipt, { autoAlpha: 1, y: 0, duration: 0.3, ease: "power2.out" }, t + 0.4);
+
+        // hold tail, then publish total duration back onto the composition
+        const total = t + 0.4 + 0.3 + T.tailHold;
+        document.getElementById("root").setAttribute("data-duration", total.toFixed(2));
+
+        window.__timelines["im"] = tl;
+      })();
+    </script>
+  </div>
+</body>
+</html>
