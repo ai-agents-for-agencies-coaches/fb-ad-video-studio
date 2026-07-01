@@ -111,3 +111,12 @@ The highest-leverage use: turn a winning video ad into a reusable composition. S
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+## Free training & community
+
+This is one of several **free** skills from the AI for Agencies & SMBs community.
+
+- 📺 **Free build-alongs & tutorials on YouTube:** https://www.youtube.com/@geopopos
+- 🚀 **Full AI marketing courses, templates & live support** inside the Skool community: https://www.skool.com/ai-for-agencies-smbs-1573
