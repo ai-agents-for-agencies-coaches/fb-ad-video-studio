@@ -1,0 +1,21 @@
+<!-- TEMPLATE trust-card slide. Fill {{LOGO_B64}}, {{STAT1}}, {{LABEL1}}, {{STAT2}}, {{LABEL2}}, {{SUB}}
+     and brand colors, then render with image-studio render.js at 720x1280 @2x ->
+     scenes/<slide_id>.png  (e.g. scenes/s6_trust.png). Uses navy #292966 / gold #D4AF37 by default. -->
+<!doctype html><html><head><meta charset="utf8">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@600&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}
+body{width:720px;height:1280px;background:#292966;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;color:#fff}
+.stars{font-size:54px;color:#D4AF37;letter-spacing:8px;margin-bottom:34px}
+.plate{background:#fff;border-radius:22px;padding:30px 46px;margin-bottom:54px}
+.plate img{height:120px;display:block}
+.row{font-family:'Bebas Neue';font-size:96px;line-height:.96;text-align:center}
+.row .g{color:#D4AF37}
+.sub{font-family:'Oswald';font-weight:600;font-size:30px;letter-spacing:3px;color:#cfd0e8;margin-top:10px;text-transform:uppercase}
+.divider{width:120px;height:6px;background:#D4AF37;border-radius:3px;margin:40px 0}</style></head><body>
+<div class="stars">★★★★★</div>
+<div class="plate"><img src="data:image/png;base64,{{LOGO_B64}}"></div>
+<div class="row"><span class="g">{{STAT1}}</span> {{LABEL1}}</div>
+<div class="divider"></div>
+<div class="row"><span class="g">{{STAT2}}</span><br>{{LABEL2}}</div>
+<div class="sub">{{SUB}}</div>
+</body></html>

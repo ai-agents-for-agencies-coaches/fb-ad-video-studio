@@ -1,0 +1,214 @@
+<!doctype html>
+<!--
+  TEMPLATE: listicle-top5  (HyperFrames composition)
+  Fast-cut "Top 5 / 5 Reasons" listicle ad. No presenter footage. VO + SFX.
+  ~24s, 1080x1920, 30fps. Vertical (Reels/Shorts/Stories).
+
+  SWAP THESE:
+    --accent / --accent-light / --accent-deep / --ink / --bg / --mute   brand tokens (:root)
+    audio/vo.mp3                                                         generate via scripts/tts.py
+    [KICKER] [TITLE ...] [ITEM N HEADLINE] [supporting line] [CTA] [OFFER / URL]   copy
+    SFX timings                                                         anchor to whisper word starts
+  Beat arc (keep the RATIOS, retime to your VO's real word starts):
+    title 0-3 · item1 3-6.5 · item2 6.5-10 · item3 10-13.5 · item4 13.5-17 · item5 17-20.5 · CTA 20.5-24
+  Each item = big number badge (in --accent) + [ITEM N HEADLINE] + [supporting line].
+  Cumulative pip rail at the bottom lights one dot per item.
+  Workflow: scripts/tts.py -> scripts/whisper-words.py -> retime beats -> scripts/fetch-sfx.sh -> npx hyperframes lint && render
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1080, height=1920" />
+  <title>Listicle Top 5</title>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#0a0a0c; --ink:#f5f5f7; --mute:#8b8b95;
+      --accent:#10b981; --accent-light:#6ee7b7; --accent-deep:#064e3b;
+      --warn:#f59e0b; --danger:#ef4444;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{width:1080px;height:1920px;overflow:hidden;background:var(--bg);
+      color:var(--ink);font-family:"Inter",ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+    .clip{position:absolute;opacity:0}
+    .stage{position:absolute;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;text-align:center;padding:0 96px}
+
+    /* ---- title card ---- */
+    .title-kicker{font-size:36px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--accent-light)}
+    .title-big{font-size:132px;font-weight:900;line-height:1.0;letter-spacing:-.03em;margin-top:26px}
+    .title-big .hl{color:var(--accent)}
+    .title-sub{font-size:46px;font-weight:600;color:var(--mute);margin-top:34px;line-height:1.25}
+
+    /* ---- item scenes ---- */
+    .ghost{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      font-size:1120px;font-weight:900;color:var(--accent);opacity:0;line-height:1;
+      z-index:0;pointer-events:none;user-select:none}
+    .badge{position:relative;z-index:1;width:236px;height:236px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      background:var(--accent);color:var(--bg);font-size:150px;font-weight:900;letter-spacing:-.04em;
+      box-shadow:0 30px 80px rgba(16,185,129,.35)}
+    .head{position:relative;z-index:1;font-size:96px;font-weight:900;line-height:1.05;letter-spacing:-.02em;margin-top:44px}
+    .head .hl{color:var(--accent)}
+    .rule{position:relative;z-index:1;width:190px;height:8px;border-radius:99px;background:var(--accent);
+      margin-top:30px;transform-origin:center}
+    .sub{position:relative;z-index:1;font-size:48px;font-weight:600;color:var(--mute);line-height:1.28;margin-top:30px;max-width:820px}
+
+    /* ---- CTA lockup ---- */
+    .cta{font-size:104px;font-weight:900;letter-spacing:-.02em;line-height:1.02}
+    .cta .hl{color:var(--accent)}
+    .pill{margin-top:48px;font-size:46px;font-weight:800;color:var(--bg);
+      background:var(--accent);padding:26px 66px;border-radius:999px}
+
+    /* ---- persistent chrome ---- */
+    .bgglow{position:absolute;inset:0;background:
+      radial-gradient(60% 45% at 50% 36%,rgba(16,185,129,.20),transparent 70%);opacity:1}
+    .bar{position:absolute;left:0;top:0;height:12px;width:0;background:var(--accent);z-index:5}
+    .pips{position:absolute;left:0;right:0;bottom:120px;display:flex;gap:26px;justify-content:center;z-index:5}
+    .pip{width:26px;height:26px;border-radius:50%;background:var(--accent);opacity:.22}
+  </style>
+</head>
+<body>
+  <div id="root" data-composition-id="main"
+       data-start="0" data-duration="24"
+       data-width="1080" data-height="1920" data-fps="30">
+
+    <div class="bgglow"></div>
+    <div id="progress" class="bar"></div>
+    <div class="pips">
+      <span id="pip-1" class="pip"></span>
+      <span id="pip-2" class="pip"></span>
+      <span id="pip-3" class="pip"></span>
+      <span id="pip-4" class="pip"></span>
+      <span id="pip-5" class="pip"></span>
+    </div>
+
+    <!-- VO (track 0) — replace with scripts/tts.py output -->
+    <audio id="vo" class="clip" src="audio/vo.mp3" data-start="0" data-duration="24" data-track-index="0"></audio>
+
+    <!-- SFX rail (track 300+) — fetch via scripts/fetch-sfx.sh, retime to whisper word starts -->
+    <audio id="sfx-whoosh-0" class="clip" src="assets/sfx/whoosh.mp3" data-start="0.10"  data-duration="0.6"  data-track-index="300"></audio>
+    <audio id="sfx-tick-1"   class="clip" src="assets/sfx/tick.mp3"   data-start="3.20"  data-duration="0.35" data-track-index="301"></audio>
+    <audio id="sfx-tick-2"   class="clip" src="assets/sfx/tick.mp3"   data-start="6.70"  data-duration="0.35" data-track-index="302"></audio>
+    <audio id="sfx-tick-3"   class="clip" src="assets/sfx/tick.mp3"   data-start="10.20" data-duration="0.35" data-track-index="303"></audio>
+    <audio id="sfx-tick-4"   class="clip" src="assets/sfx/tick.mp3"   data-start="13.70" data-duration="0.35" data-track-index="304"></audio>
+    <audio id="sfx-tick-5"   class="clip" src="assets/sfx/tick.mp3"   data-start="17.20" data-duration="0.35" data-track-index="305"></audio>
+    <audio id="sfx-punch-0"  class="clip" src="assets/sfx/punch.mp3"  data-start="20.70" data-duration="0.22" data-track-index="306"></audio>
+
+    <!-- ===== SCENE CLIPS (kept alive full-duration; GSAP controls visibility) ===== -->
+
+    <!-- TITLE CARD -->
+    <div id="s-title" class="clip stage" data-start="0" data-duration="24" data-track-index="200">
+      <div class="title-kicker">[KICKER]</div>
+      <div class="title-big">[NUMBER] <span class="hl">reasons</span><br/>[BIG PROMISE]</div>
+      <div class="title-sub">[one-line setup — "here they are"]</div>
+    </div>
+
+    <!-- ITEM 1 -->
+    <div id="s-item1" class="clip stage" data-start="0" data-duration="24" data-track-index="201">
+      <div class="ghost">1</div>
+      <div class="badge">1</div>
+      <div class="head">[ITEM 1 <span class="hl">HEADLINE</span>]</div>
+      <div class="rule"></div>
+      <div class="sub">[supporting line — the payoff or proof]</div>
+    </div>
+
+    <!-- ITEM 2 -->
+    <div id="s-item2" class="clip stage" data-start="0" data-duration="24" data-track-index="202">
+      <div class="ghost">2</div>
+      <div class="badge">2</div>
+      <div class="head">[ITEM 2 <span class="hl">HEADLINE</span>]</div>
+      <div class="rule"></div>
+      <div class="sub">[supporting line — the payoff or proof]</div>
+    </div>
+
+    <!-- ITEM 3 -->
+    <div id="s-item3" class="clip stage" data-start="0" data-duration="24" data-track-index="203">
+      <div class="ghost">3</div>
+      <div class="badge">3</div>
+      <div class="head">[ITEM 3 <span class="hl">HEADLINE</span>]</div>
+      <div class="rule"></div>
+      <div class="sub">[supporting line — the payoff or proof]</div>
+    </div>
+
+    <!-- ITEM 4 -->
+    <div id="s-item4" class="clip stage" data-start="0" data-duration="24" data-track-index="204">
+      <div class="ghost">4</div>
+      <div class="badge">4</div>
+      <div class="head">[ITEM 4 <span class="hl">HEADLINE</span>]</div>
+      <div class="rule"></div>
+      <div class="sub">[supporting line — the payoff or proof]</div>
+    </div>
+
+    <!-- ITEM 5 -->
+    <div id="s-item5" class="clip stage" data-start="0" data-duration="24" data-track-index="205">
+      <div class="ghost">5</div>
+      <div class="badge">5</div>
+      <div class="head">[ITEM 5 <span class="hl">HEADLINE</span>]</div>
+      <div class="rule"></div>
+      <div class="sub">[supporting line — the payoff or proof]</div>
+    </div>
+
+    <!-- CTA LOCKUP -->
+    <div id="s-cta" class="clip stage" data-start="0" data-duration="24" data-track-index="206">
+      <div class="cta">[CTA — <span class="hl">do this now</span>]</div>
+      <div class="pill">[OFFER / URL]</div>
+    </div>
+
+    <script>
+      // Anchor every time below to whisper word starts (scripts/whisper-words.py).
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused:true, defaults:{ ease:"expo.out" } });
+
+      // progress bar across the whole ad
+      tl.to("#progress", { width:1080, duration:24, ease:"none" }, 0);
+
+      // ---- TITLE CARD (0.0 - 3.0) ----
+      tl.set("#s-title", { opacity:1 }, 0.10);
+      tl.fromTo("#s-title .title-kicker", { opacity:0, y:30 },
+                                          { opacity:1, y:0, duration:.32, ease:"back.out(1.5)" }, 0.15);
+      tl.fromTo("#s-title .title-big",    { opacity:0, y:46, scale:.94 },
+                                          { opacity:1, y:0, scale:1, duration:.44, ease:"back.out(1.6)" }, 0.30);
+      tl.fromTo("#s-title .title-sub",    { opacity:0, y:24 },
+                                          { opacity:1, y:0, duration:.30 }, 0.62);
+      tl.to("#s-title", { opacity:0, y:-26, duration:.28, ease:"power2.in", overwrite:"auto" }, 3.0);
+      tl.set("#s-title", { opacity:0 }, 3.3);   // hard-kill for seek safety
+
+      // ---- ITEM helper: badge pop -> ghost -> headline -> rule -> supporting line -> exit ----
+      const item = (n, tIn, tOut) => {
+        const s = "#s-item" + n;
+        tl.set(s, { opacity:1 }, tIn);
+        tl.fromTo(s + " .ghost", { opacity:0, scale:1.18 },
+                                 { opacity:.10, scale:1, duration:.40, ease:"power2.out" }, tIn);
+        tl.fromTo(s + " .badge", { opacity:0, y:44, scale:.55 },
+                                 { opacity:1, y:0, scale:1, duration:.42, ease:"back.out(2)" }, tIn + .04);
+        tl.fromTo(s + " .head",  { opacity:0, y:34 },
+                                 { opacity:1, y:0, duration:.32, ease:"back.out(1.5)" }, tIn + .22);
+        tl.fromTo(s + " .rule",  { scaleX:0, opacity:0 },
+                                 { scaleX:1, opacity:1, duration:.30, ease:"power3.out" }, tIn + .34);
+        tl.fromTo(s + " .sub",   { opacity:0, y:26 },
+                                 { opacity:1, y:0, duration:.30, ease:"power2.out" }, tIn + .44);
+        // light this item's pip (cumulative — reads as list progress)
+        tl.to("#pip-" + n, { opacity:1, scale:1.25, duration:.22, ease:"back.out(2)" }, tIn + .04);
+        tl.to(s, { opacity:0, y:-26, duration:.26, ease:"power2.in", overwrite:"auto" }, tOut);
+        tl.set(s, { opacity:0 }, tOut + .3);   // hard-kill for seek safety
+      };
+      item(1, 3.2,  6.5);
+      item(2, 6.7,  10.0);
+      item(3, 10.2, 13.5);
+      item(4, 13.7, 17.0);
+      item(5, 17.2, 20.5);
+
+      // ---- CTA LOCKUP (20.5 - end) — holds to the end ----
+      tl.set("#s-cta", { opacity:1 }, 20.6);
+      tl.fromTo("#s-cta .cta",  { opacity:0, y:36, scale:.92 },
+                                { opacity:1, y:0, scale:1, duration:.42, ease:"back.out(1.6)" }, 20.7);
+      tl.fromTo("#s-cta .pill", { opacity:0, scale:.8 },
+                                { opacity:1, scale:1, duration:.38, ease:"back.out(2)" }, 21.15);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </div>
+</body>
+</html>

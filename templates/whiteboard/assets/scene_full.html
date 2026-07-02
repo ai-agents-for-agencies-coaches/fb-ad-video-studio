@@ -1,0 +1,111 @@
+<!doctype html><html><head><meta charset="utf8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:720px;height:1280px;background:#fff;overflow:hidden}
+#stage{position:relative;width:720px;height:1280px;background:#fdfdfb}
+.scene{position:absolute;inset:0;display:none}
+.art{position:absolute}
+.art img{position:absolute;left:0;top:0;object-fit:contain}
+.art .lines{z-index:1}.art .color{z-index:2}
+.slide img{position:absolute;inset:0;width:720px;height:1280px;object-fit:cover}
+#hand{position:absolute;left:-9999px;top:-9999px;pointer-events:none;z-index:60;
+  filter:drop-shadow(3px 6px 5px rgba(0,0,0,.18))}
+</style></head><body>
+<div id="stage"><svg width="0" height="0" style="position:absolute"><defs id="defs"></defs></svg><img id="hand"></div>
+<script>
+let C=null, HW=0, HH=0;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const ease=p=>p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function coverage(rng,W,H,rightBound){
+  const rows=5, top=44, bot=H-44, dy=(bot-top)/(rows-1), xL=W*0.05, xR=W*rightBound, steps=7;
+  let p=[];
+  for(let r=0;r<rows;r++){
+    const y=top+r*dy, dir=r%2===0, a=dir?xL:xR, b=dir?xR:xL;
+    for(let s=0;s<=steps;s++){const f=s/steps, x=a+(b-a)*f;
+      const wob=Math.sin(f*Math.PI*3+r*1.3)*9+(rng()-0.5)*26;
+      p.push([x+(rng()-0.5)*12, y+wob]);}
+  }
+  return 'M'+p.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' L');
+}
+function svgEl(t,a){const e=document.createElementNS('http://www.w3.org/2000/svg',t);
+  for(const k in a)e.setAttribute(k,a[k]);return e;}
+
+window.init = function(cfg){
+  C=cfg; const stage=document.getElementById('stage'), defs=document.getElementById('defs');
+  HW=cfg.handW; HH=cfg.handW;
+  cfg.scenes.forEach((s,i)=>{
+    const div=document.createElement('div'); div.className='scene'; div.id='sc'+i;
+    const D=s.end-s.start; s.D=D;
+    if(s.type==='draw'){
+      const activeEnd=D*0.90;
+      s.lineDur=activeEnd*0.46; s.paintStart=s.lineDur*0.72; s.paintDur=activeEnd-s.paintStart;
+      const art=document.createElement('div'); art.className='art';
+      art.style.cssText=`left:${cfg.art.left}px;top:${cfg.art.top}px;width:${cfg.art.w}px;height:${cfg.art.h}px`;
+      for(const kind of ['line','color']){
+        const m=svgEl('mask',{id:`m_${kind}_${i}`,maskUnits:'userSpaceOnUse',maskContentUnits:'userSpaceOnUse',x:0,y:0,width:cfg.art.w,height:cfg.art.h});
+        const rng=mulberry32(((i+1)*(kind==='line'?2654435761:40503)+91)>>>0);
+        const path=svgEl('path',{d:coverage(rng,cfg.art.w,cfg.art.h,cfg.rightBound),fill:'none',stroke:'#fff','stroke-width':kind==='line'?175:190,'stroke-linecap':'round','stroke-linejoin':'round'});
+        m.appendChild(path); defs.appendChild(m);
+        if(kind==='line') s.pl=path; else s.pc=path;
+      }
+      const lines=document.createElement('img'); lines.className='lines'; lines.src=s.lines;
+      lines.width=cfg.art.w; lines.height=cfg.art.h;
+      lines.style.webkitMaskImage=`url(#m_line_${i})`; lines.style.maskImage=lines.style.webkitMaskImage;
+      const color=document.createElement('img'); color.className='color'; color.src=s.color;
+      color.width=cfg.art.w; color.height=cfg.art.h;
+      color.style.webkitMaskImage=`url(#m_color_${i})`; color.style.maskImage=color.style.webkitMaskImage;
+      art.appendChild(lines); art.appendChild(color);
+      div.appendChild(art); s.linesEl=lines; s.colorEl=color;
+    } else {
+      div.classList.add('slide');
+      const img=document.createElement('img'); img.src=s.img; div.appendChild(img); s.imgEl=img;
+    }
+    stage.insertBefore(div, document.getElementById('hand'));
+  });
+  // measure path lengths once images/paths are in DOM
+  cfg.scenes.forEach(s=>{ if(s.type==='draw'){ s.Ln=s.pl.getTotalLength(); s.Lc=s.pc.getTotalLength();
+    s.pl.style.strokeDasharray=s.Ln; s.pl.style.strokeDashoffset=s.Ln;
+    s.pc.style.strokeDasharray=s.Lc; s.pc.style.strokeDashoffset=s.Lc; }});
+  const hand=document.getElementById('hand'); hand.src=cfg.hand; hand.width=cfg.handW;
+  window.__ready=Promise.all([...document.querySelectorAll('img')]
+    .map(im=>im.complete?1:new Promise(r=>{im.onload=r;im.onerror=r;})));
+};
+
+window.render = function(t){
+  const hand=document.getElementById('hand'); let handSet=false;
+  C.scenes.forEach((s,i)=>{
+    const div=document.getElementById('sc'+i), active=t>=s.start && t<s.end;
+    div.style.display=active?'block':'none';
+    if(!active) return;
+    const lt=t-s.start;
+    if(s.type==='slide'){
+      const p=ease(clamp(lt/0.5,0,1));
+      s.imgEl.style.opacity=p; s.imgEl.style.transform=`scale(${0.96+0.04*p})`;
+      s.imgEl.style.transformOrigin='50% 50%'; return;
+    }
+    // draw scene: brush-follow reveal, line then paint
+    const lp=clamp(lt/s.lineDur,0,1), llen=lp*s.Ln;
+    if(lp>=1){ s.linesEl.style.webkitMaskImage='none'; s.linesEl.style.maskImage='none'; }
+    else { s.linesEl.style.webkitMaskImage=`url(#m_line_${i})`; s.linesEl.style.maskImage=s.linesEl.style.webkitMaskImage;
+           s.pl.style.strokeDashoffset=s.Ln-llen; }
+    const pp=clamp((lt-s.paintStart)/s.paintDur,0,1), clen=pp*s.Lc;
+    if(pp>=1){ s.colorEl.style.webkitMaskImage='none'; s.colorEl.style.maskImage='none'; }
+    else { s.colorEl.style.webkitMaskImage=`url(#m_color_${i})`; s.colorEl.style.maskImage=s.colorEl.style.webkitMaskImage;
+           s.pc.style.strokeDashoffset=s.Lc-clen; }
+    const linePhase=lt<s.lineDur, paintPhase=lt>=s.paintStart && lt<s.paintStart+s.paintDur;
+    let pt=null;
+    if(linePhase) pt=s.pl.getPointAtLength(llen);
+    else if(paintPhase) pt=s.pc.getPointAtLength(clen);
+    if(pt){
+      const mx=2.5*Math.sin(t*23.3)+1.5*Math.sin(t*9.1), my=2*Math.cos(t*19.1)+1.5*Math.sin(t*7.7);
+      let L=C.art.left+pt.x+mx-C.tip.x*HW, T=C.art.top+pt.y+my-C.tip.y*HH;
+      L=clamp(L,-80,720-130); T=clamp(T,-50,1280-140);
+      hand.style.left=L+'px'; hand.style.top=T+'px';
+      hand.style.transformOrigin=`${C.tip.x*HW}px ${C.tip.y*HH}px`;
+      hand.style.transform=`rotate(${Math.sin(t*11.3)*3}deg)`; hand.style.opacity=1; handSet=true;
+    }
+  });
+  if(!handSet){ hand.style.left='-9999px'; hand.style.opacity=0; }
+};
+</script></body></html>

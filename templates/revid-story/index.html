@@ -1,0 +1,333 @@
+<!doctype html>
+<!--
+  TEMPLATE: revid-story  (HyperFrames composition)
+  "revid-style" vertical video ad: full-bleed AI-generated scene backgrounds that
+  SWAP per caption, a big word-synced caption band, VO + SFX + (optional) music.
+  1080x1920 · 30fps · ~24.6s scaffold (retime to your VO). Reels/Shorts/Stories/TikTok.
+
+  SWAP THESE:
+    --accent / --accent-deep / --accent-light / --ink / --bg / --mute   brand tokens (:root)
+    --font-head / --font-body                                           brand fonts (:root)
+    audio/vo.mp3                                                         scripts/tts.py from script.md
+    audio/vo.words.json                                                  scripts/whisper-words.py (caption sync)
+    assets/scene-01.* … assets/scene-04.*                               AI-generated backgrounds (img OR mp4)
+    assets/mascot.png                                                    OPTIONAL brand character (delete if unused)
+    [HOOK] [PROBLEM] [CONTRAST] [REFRAME] [MECHANISM] [PROOF] [POSITIONING] [CTA]   copy
+    SFX timings                                                          anchor to whisper word starts
+
+  Beat arc (keep the RATIOS, retime every number to your VO word starts):
+    hook 0.0-5.55 · contrast 5.6-8.95 · reframe 9.0-10.8 · mechanism 10.85-15.55
+    · proof 15.6-18.95 · positioning 19.0-22.1 · CTA 22.15-24.6
+
+  BACKGROUNDS: each full-bleed scene expects an AI-generated background at
+  assets/scene-0N.*  — a still (.jpg/.png, gets a Ken Burns push) OR a video (.mp4,
+  swap the <img class="bg"> for <video class="bg" ... > with the same id). Until you
+  drop real media in assets/, the scenes still render (scrim + captions) so lint/preview work.
+
+  Workflow: scripts/tts.py -> scripts/whisper-words.py -> retime beats -> drop scene bg's + SFX
+            -> npx hyperframes lint && npx hyperframes render
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1080, height=1920" />
+  <title>revid-story</title>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700;800;900&family=Roboto:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      /* brand tokens — swap these to re-skin the whole ad */
+      --bg:#000000; --ink:#241f18; --mute:#6B6457;
+      --accent:#FF6900; --accent-deep:#D8613C; --accent-light:#FFC79A;
+      --danger:#D8463C;
+      /* light surfaces derived from the accent — used by the motion-gfx scenes/cards */
+      --panel:#FFF7F0; --panel-2:#FFE8D6;
+      /* fonts — swap to brand fonts */
+      --font-head:"Roboto Slab", ui-serif, Georgia, serif;
+      --font-body:"Roboto", ui-sans-serif, system-ui, sans-serif;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{width:1080px;height:1920px;overflow:hidden;background:var(--bg);color:var(--ink);
+      font-family:var(--font-body);-webkit-font-smoothing:antialiased}
+    .clip{position:absolute;inset:0;opacity:0}
+    .fill{position:absolute;inset:0;width:100%;height:100%}
+    .bg{object-fit:cover;will-change:transform;background:#20160c}   /* fallback color if bg media missing */
+    .scrim{position:absolute;inset:0}
+    .scrim.dark{background:linear-gradient(180deg,rgba(20,16,12,.45) 0%,rgba(20,16,12,.15) 38%,rgba(20,16,12,.62) 100%)}
+    .stage{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 84px}
+    /* ===== CAPTIONS — the revid signature. Big slab, heavy weight, pop-on ===== */
+    .cap{opacity:0;font-family:var(--font-head);font-weight:900;color:#fff;
+      line-height:1.02;letter-spacing:-.02em;text-shadow:0 6px 30px rgba(0,0,0,.55)}
+    .cap.lg{font-size:118px}
+    .cap.md{font-size:96px}
+    .cap.sm{font-size:74px}
+    .hl{color:var(--accent)}
+    .hl-dim{color:var(--accent-light)}
+    .toplbl{position:absolute;top:300px;left:0;right:0;text-align:center;opacity:0;
+      font-family:var(--font-head);font-weight:800;font-size:70px;color:#fff;letter-spacing:-.01em;
+      text-shadow:0 6px 30px rgba(0,0,0,.55);padding:0 70px}
+    .toplbl .hl{color:var(--accent)}
+    .disc{position:absolute;bottom:120px;left:0;right:0;text-align:center;opacity:0;
+      font-family:var(--font-body);font-weight:600;font-size:30px;color:var(--panel);letter-spacing:.01em;
+      text-shadow:0 3px 14px rgba(0,0,0,.6)}
+    /* ===== comparison cards (the "3 options" contrast scene) ===== */
+    .qwrap{display:flex;gap:30px;margin-top:40px}
+    .qcard{opacity:0;width:250px;background:#fff;border-radius:24px;padding:34px 18px;
+      box-shadow:0 24px 60px rgba(0,0,0,.45);display:flex;flex-direction:column;align-items:center;gap:10px}
+    .qcard .qn{font-family:var(--font-head);font-weight:800;font-size:60px;color:var(--ink)}
+    .qcard .ql{font-size:24px;font-weight:600;color:var(--mute);text-transform:uppercase;letter-spacing:.08em}
+    .qcard.q3 .qn{color:var(--accent)}
+    /* ===== product / mechanism panel (generic phone-style UI mockup) ===== */
+    .phone{opacity:0;width:560px;height:1120px;border-radius:66px;background:#fff;
+      border:16px solid #2A2620;box-shadow:0 40px 90px rgba(0,0,0,.5);position:relative;overflow:hidden}
+    .notch{position:absolute;top:0;left:50%;width:186px;height:38px;background:#2A2620;border-radius:0 0 22px 22px;z-index:3}
+    .screen{position:absolute;inset:0;background:linear-gradient(180deg,#fff,var(--panel));padding:78px 40px 40px;display:flex;flex-direction:column}
+    .app-h{display:flex;align-items:center;justify-content:center;gap:12px;font-family:var(--font-head);font-weight:800;font-size:34px;color:var(--ink)}
+    .dot{width:20px;height:20px;border-radius:50%;background:var(--accent)}
+    .fl{margin-top:40px;font-size:20px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);text-align:left}
+    .field{margin-top:14px;display:flex;align-items:center;gap:14px;background:#fff;border:3px solid var(--panel-2);border-radius:18px;padding:24px 22px;font-size:26px;color:var(--ink);box-shadow:0 6px 16px rgba(58,53,44,.08);text-align:left}
+    .gobtn{opacity:0;margin-top:22px;background:linear-gradient(180deg,var(--accent),var(--accent-deep));color:#fff;text-align:center;font-weight:800;font-size:30px;padding:26px;border-radius:999px;box-shadow:0 16px 30px rgba(255,105,0,.35)}
+    .result{opacity:0;margin-top:34px;background:var(--panel-2);border-radius:28px;padding:34px 28px;box-shadow:0 14px 30px rgba(58,53,44,.14)}
+    .result .lbl{font-size:20px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+    .range{font-family:var(--font-head);font-weight:900;font-size:72px;color:var(--accent);line-height:1.04;margin-top:8px;letter-spacing:-.01em}
+    .note{margin-top:14px;font-size:21px;line-height:1.35;color:var(--mute)}
+    /* ===== proof checklist ===== */
+    .checks{display:flex;flex-direction:column;gap:26px;margin-top:30px;align-items:flex-start}
+    .chk{opacity:0;display:flex;align-items:center;gap:26px;font-family:var(--font-head);font-weight:800;font-size:78px;color:#fff;text-shadow:0 5px 24px rgba(0,0,0,.5)}
+    .chk .bx{width:78px;height:78px;border-radius:18px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:54px;color:#fff;flex:0 0 auto}
+    /* ===== optional brand mascot/character ===== */
+    .mascot{position:absolute;opacity:0;width:430px;height:430px;right:46px;bottom:150px;
+      background-size:contain;background-repeat:no-repeat;background-position:bottom right;
+      filter:drop-shadow(0 18px 30px rgba(0,0,0,.35))}
+    /* ===== CTA ===== */
+    .ctawrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:44px;background:radial-gradient(80% 60% at 50% 38%,var(--panel-2),var(--panel))}
+    .cta-big{opacity:0;font-family:var(--font-head);font-weight:900;font-size:110px;color:var(--ink);letter-spacing:-.02em;text-align:center;line-height:1.02}
+    .cta-big .hl{color:var(--accent)}
+    .pill{opacity:0;font-family:var(--font-head);font-weight:900;font-size:64px;color:#fff;
+      background:linear-gradient(180deg,var(--accent),var(--accent-deep));padding:38px 86px;border-radius:999px;box-shadow:0 22px 46px rgba(255,105,0,.4)}
+    .cta-disc{opacity:0;position:absolute;bottom:120px;left:0;right:0;text-align:center;font-size:28px;font-weight:600;color:var(--mute);padding:0 90px}
+    /* ===== chrome ===== */
+    .bar{position:absolute;left:0;bottom:0;height:12px;width:0;background:var(--accent);z-index:40}
+    .flash{position:absolute;inset:0;background:#fff;opacity:0;z-index:35;pointer-events:none}
+  </style>
+</head>
+<body>
+  <div id="root" data-composition-id="main"
+       data-start="0" data-duration="24.6"
+       data-width="1080" data-height="1920" data-fps="30">
+
+    <!-- ===================== AUDIO ===================== -->
+    <!-- VO (track 0) — generate audio/vo.mp3 from script.md via scripts/tts.py -->
+    <audio id="vo" class="clip" src="audio/vo.mp3" data-start="0" data-duration="24.6" data-track-index="0"></audio>
+    <!-- OPTIONAL bed music (track 1) — uncomment and drop assets/music.mp3
+    <audio id="music" class="clip" src="assets/music.mp3" data-start="0" data-duration="24.6" data-track-index="1" data-volume="0.12"></audio> -->
+
+    <!-- SFX rail (track 300+) — whooshes on every hard cut; retime to whisper word starts -->
+    <audio id="w0" class="clip" src="assets/sfx/whoosh.mp3" data-start="0.00"  data-duration="0.6" data-track-index="300"></audio>
+    <audio id="w1" class="clip" src="assets/sfx/whoosh.mp3" data-start="5.55"  data-duration="0.6" data-track-index="301"></audio>
+    <audio id="w2" class="clip" src="assets/sfx/whoosh.mp3" data-start="8.95"  data-duration="0.6" data-track-index="302"></audio>
+    <audio id="w3" class="clip" src="assets/sfx/whoosh.mp3" data-start="10.80" data-duration="0.6" data-track-index="303"></audio>
+    <audio id="w4" class="clip" src="assets/sfx/whoosh.mp3" data-start="15.55" data-duration="0.6" data-track-index="304"></audio>
+    <audio id="w5" class="clip" src="assets/sfx/whoosh.mp3" data-start="18.95" data-duration="0.6" data-track-index="305"></audio>
+    <audio id="w6" class="clip" src="assets/sfx/whoosh.mp3" data-start="22.10" data-duration="0.6" data-track-index="306"></audio>
+    <!-- chime on the contrast reveal + the result reveal -->
+    <audio id="m1" class="clip" src="assets/sfx/chime.mp3" data-start="8.20"  data-duration="0.8" data-track-index="310"></audio>
+    <audio id="m2" class="clip" src="assets/sfx/chime.mp3" data-start="13.20" data-duration="0.8" data-track-index="311"></audio>
+    <!-- click on the CTA button press -->
+    <audio id="c1" class="clip" src="assets/sfx/click.mp3" data-start="11.40" data-duration="0.3" data-track-index="312"></audio>
+    <!-- pops on the checkmarks -->
+    <audio id="p1" class="clip" src="assets/sfx/pop.mp3" data-start="16.80" data-duration="0.3" data-track-index="313"></audio>
+    <audio id="p2" class="clip" src="assets/sfx/pop.mp3" data-start="17.20" data-duration="0.3" data-track-index="314"></audio>
+    <audio id="p3" class="clip" src="assets/sfx/pop.mp3" data-start="17.86" data-duration="0.3" data-track-index="315"></audio>
+    <audio id="p4" class="clip" src="assets/sfx/pop.mp3" data-start="18.12" data-duration="0.3" data-track-index="316"></audio>
+
+    <!-- ============ SCENE 1 — HOOK + PROBLEM over AI background (Ken Burns) ============ -->
+    <!-- Background: drop an AI-generated still at assets/scene-01.jpg, or swap this <img>
+         for <video id="bgS1" class="fill bg" src="assets/scene-01.mp4" data-start="0" data-duration="24.6" muted></video> -->
+    <div id="s1" class="clip" data-track-index="100">
+      <img id="bgS1" class="fill bg" src="assets/scene-01.jpg" />
+      <div class="scrim dark"></div>
+      <div class="stage">
+        <div id="s1a" class="cap lg">[HOOK LINE — the<br/><span class="hl">scroll-stopping</span> claim]</div>
+      </div>
+      <div class="stage">
+        <div id="s1b" class="cap md">[PROBLEM — and that's<br/>how you get <span class="hl">burned</span>]</div>
+      </div>
+    </div>
+
+    <!-- ============ SCENE 2 — CONTRAST (3 comparison cards, motion-gfx) ============ -->
+    <div id="s2" class="clip" data-track-index="110"
+         style="background:radial-gradient(90% 60% at 50% 18%,var(--panel-2),var(--panel))">
+      <div class="stage">
+        <div id="s2h" class="cap sm" style="color:var(--ink);text-shadow:none">[3 OPTIONS.]<br/>[3 DIFFERENT <span class="hl">OUTCOMES.</span>]</div>
+        <div class="qwrap">
+          <div id="qc1" class="qcard"><div class="qn">[A]</div><div class="ql">[Option A]</div></div>
+          <div id="qc2" class="qcard"><div class="qn">[B]</div><div class="ql">[Option B]</div></div>
+          <div id="qc3" class="qcard q3"><div class="qn">???</div><div class="ql">[The right way]</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCENE 2T — REFRAME (dark full-bleed statement) ============ -->
+    <div id="s2t" class="clip" data-track-index="115"
+         style="background:linear-gradient(160deg,#2A2620,#3A352C)">
+      <div class="stage">
+        <div id="s2tc" class="cap md">[REFRAME — do the<br/><span class="hl">smart thing</span> first.]</div>
+      </div>
+    </div>
+
+    <!-- ============ SCENE 3 — MECHANISM (generic product/app UI mockup) ============ -->
+    <div id="s3" class="clip" data-track-index="120"
+         style="background:radial-gradient(85% 55% at 50% 12%,var(--panel-2),var(--panel))">
+      <div id="s3lbl" class="toplbl">[GET YOUR OUTCOME]<br/>IN <span class="hl">[TIMEFRAME]</span></div>
+      <div class="stage" style="justify-content:flex-end;padding-bottom:120px">
+        <div id="phone" class="phone">
+          <div class="notch" style="transform:translateX(-50%)"></div>
+          <div class="screen">
+            <div class="app-h"><span class="dot"></span> [BRAND]</div>
+            <div class="fl">[Input label]</div>
+            <div class="field"><span>▸</span><span id="fieldTxt">[user input example]</span></div>
+            <div id="go" class="gobtn">[CTA Button] →</div>
+            <div id="res" class="result">
+              <div class="lbl">[Result label]</div>
+              <div class="range">[RESULT VALUE]</div>
+              <div class="note">[fine print / qualifier]</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCENE 4 — PROOF (AI background + checklist + optional mascot) ============ -->
+    <!-- Background: assets/scene-02.jpg (or swap <img> for <video> as in scene 1) -->
+    <div id="s4" class="clip" data-track-index="130">
+      <img id="bgS4" class="fill bg" src="assets/scene-02.jpg" />
+      <div class="scrim dark"></div>
+      <div id="s4lbl" class="toplbl">[MATCHED TO A <span class="hl">TRUSTED</span>]<br/>[LOCAL PRO]</div>
+      <div class="stage" style="justify-content:center;padding-left:120px;align-items:flex-start">
+        <div class="checks">
+          <div id="ck1" class="chk"><span class="bx">✓</span>[PROOF 1]</div>
+          <div id="ck2" class="chk"><span class="bx">✓</span>[PROOF 2]</div>
+          <div id="ck3" class="chk"><span class="bx">✓</span>[PROOF 3]</div>
+          <div id="ck4" class="chk"><span class="bx">✓</span>[PROOF 4]</div>
+        </div>
+      </div>
+      <!-- OPTIONAL brand character — delete this line if you have no mascot -->
+      <div id="mascot4" class="mascot" style="background-image:url('assets/mascot.png')"></div>
+      <div id="s4disc" class="disc">[disclaimer / legal line]</div>
+    </div>
+
+    <!-- ============ SCENE 5 — POSITIONING / MOAT ============ -->
+    <div id="s5" class="clip" data-track-index="140"
+         style="background:radial-gradient(80% 60% at 50% 40%,var(--panel-2),var(--panel))">
+      <div class="stage">
+        <div id="s5a" class="cap md" style="color:var(--ink);text-shadow:none">[WE DON'T<br/>[COMMODITY THING].]</div>
+      </div>
+      <div class="stage">
+        <div id="s5b" class="cap sm" style="color:var(--ink);text-shadow:none">[WE MAKE SURE YOU<br/>GET THE <span class="hl">REAL BENEFIT</span>.]</div>
+      </div>
+      <!-- OPTIONAL brand character — delete if unused -->
+      <div id="mascot5" class="mascot" style="width:330px;height:330px;right:60px;bottom:200px;background-image:url('assets/mascot.png')"></div>
+    </div>
+
+    <!-- ============ SCENE 6 — CTA ============ -->
+    <div id="s6" class="clip" data-track-index="150">
+      <div class="ctawrap">
+        <div id="ctaBig" class="cta-big">[CTA<br/><span class="hl">HEADLINE</span>]</div>
+        <div id="ctaPill" class="pill">[Offer / URL] →</div>
+        <div id="ctaDisc" class="cta-disc">[final disclaimer / one-liner]</div>
+      </div>
+      <!-- OPTIONAL brand character — delete if unused -->
+      <div id="mascot6" class="mascot" style="width:300px;height:300px;left:60px;right:auto;bottom:160px;background-image:url('assets/mascot.png')"></div>
+    </div>
+
+    <div class="flash" id="flash"></div>
+    <div class="bar" id="progress"></div>
+
+    <script>
+      // Anchor EVERY time below to the word starts in audio/vo.words.json (scripts/whisper-words.py).
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused:true, defaults:{ ease:"expo.out" } });
+
+      tl.to("#progress", { width:1080, duration:24.6, ease:"none" }, 0);
+
+      // full-scene opacity gate (in/out + hard-kill for seek safety)
+      const scene = (sel, tIn, tOut) => {
+        tl.to(sel, { opacity:1, duration:0.18, ease:"none" }, tIn);
+        tl.to(sel, { opacity:0, duration:0.22, ease:"none" }, tOut);
+        tl.set(sel, { opacity:0 }, tOut + 0.25);
+      };
+      // caption pop-on (the revid look) — pops in on a word, lifts out on the next beat
+      const pop = (sel, tIn, tOut) => {
+        tl.fromTo(sel, { opacity:0, y:46, scale:.9 },
+                       { opacity:1, y:0, scale:1, duration:.32, ease:"back.out(1.6)" }, tIn);
+        tl.to(sel, { opacity:0, y:-22, duration:.2, ease:"power2.in", overwrite:"auto" }, tOut);
+        tl.set(sel, { opacity:0 }, tOut + 0.25);
+      };
+      const flash = (t) => { tl.fromTo("#flash",{opacity:.5},{opacity:0,duration:.22,ease:"power2.out"},t); tl.set("#flash",{opacity:0},t+.3); };
+
+      /* ---- SCENE 1 — HOOK + PROBLEM · 0.0 → 5.55 (Ken Burns push on bg) ---- */
+      scene("#s1", 0.0, 5.55);
+      tl.fromTo("#bgS1", { scale:1.12, yPercent:0 }, { scale:1.26, yPercent:-3, duration:5.6, ease:"none" }, 0);
+      pop("#s1a", 0.55, 3.30);
+      pop("#s1b", 3.46, 5.55);
+
+      /* ---- SCENE 2 — CONTRAST cards · 5.60 → 8.95 ---- */
+      flash(5.55);
+      scene("#s2", 5.60, 8.95);
+      pop("#s2h", 5.70, 8.95);
+      const card = (sel,t)=> tl.fromTo(sel,{opacity:0,y:60,scale:.8},{opacity:1,y:0,scale:1,duration:.4,ease:"back.out(1.8)"},t);
+      card("#qc1", 6.20);
+      card("#qc2", 7.20);
+      card("#qc3", 8.10);
+      tl.to("#qc3",{scale:1.08,duration:.3,yoyo:true,repeat:1,ease:"power1.inout"},8.20);
+
+      /* ---- SCENE 2T — REFRAME · 9.00 → 10.80 ---- */
+      flash(8.95);
+      scene("#s2t", 9.00, 10.80);
+      pop("#s2tc", 9.20, 10.80);
+
+      /* ---- SCENE 3 — MECHANISM (product UI) · 10.85 → 15.55 ---- */
+      flash(10.80);
+      scene("#s3", 10.85, 15.55);
+      tl.fromTo("#phone",{opacity:0,y:120,scale:.9},{opacity:1,y:0,scale:1,duration:.5,ease:"back.out(1.4)"},10.95);
+      tl.to("#s3lbl",{opacity:1,y:0,duration:.3},11.10);
+      tl.fromTo("#go",{opacity:0,y:20},{opacity:1,y:0,duration:.3},11.20);
+      tl.to("#go",{scale:.93,duration:.12,yoyo:true,repeat:1,ease:"power1.inout"},11.40);     // button press
+      tl.fromTo("#res",{opacity:0,y:40,scale:.92},{opacity:1,y:0,scale:1,duration:.5,ease:"back.out(1.6)"},13.05); // result reveal
+      tl.fromTo("#res .range",{scale:.7},{scale:1,duration:.45,ease:"back.out(2)"},13.20);
+      tl.set("#s3lbl",{opacity:0},15.55);
+
+      /* ---- SCENE 4 — PROOF (bg + checklist + mascot) · 15.60 → 18.95 ---- */
+      flash(15.55);
+      scene("#s4", 15.60, 18.95);
+      tl.fromTo("#bgS4",{scale:1.14,yPercent:0},{scale:1.26,yPercent:-3,duration:3.5,ease:"none"},15.60);
+      tl.to("#s4lbl",{opacity:1,y:0,duration:.3},15.75);
+      const chk=(sel,t)=>tl.fromTo(sel,{opacity:0,x:-50,scale:.85},{opacity:1,x:0,scale:1,duration:.3,ease:"back.out(2)"},t);
+      chk("#ck1",16.80); chk("#ck2",17.20); chk("#ck3",17.86); chk("#ck4",18.12);
+      tl.fromTo("#mascot4",{opacity:0,x:120,y:40},{opacity:1,x:0,y:0,duration:.5,ease:"back.out(1.4)"},16.40);
+      tl.to("#s4disc",{opacity:1,duration:.3},16.00);
+      tl.set("#s4lbl",{opacity:0},18.95); tl.set("#s4disc",{opacity:0},18.95); tl.set("#mascot4",{opacity:0},19.1);
+
+      /* ---- SCENE 5 — POSITIONING · 19.00 → 22.10 ---- */
+      flash(18.95);
+      scene("#s5", 19.00, 22.10);
+      pop("#s5a", 19.10, 20.40);
+      pop("#s5b", 20.44, 22.10);
+      tl.fromTo("#mascot5",{opacity:0,y:60},{opacity:1,y:0,duration:.5},19.30);
+      tl.set("#mascot5",{opacity:0},22.1);
+
+      /* ---- SCENE 6 — CTA · 22.15 → 24.6 (holds to end) ---- */
+      flash(22.10);
+      scene("#s6", 22.15, 24.6);
+      tl.fromTo("#ctaBig",{opacity:0,scale:.9},{opacity:1,scale:1,duration:.4,ease:"back.out(1.6)"},22.30);
+      tl.fromTo("#ctaPill",{opacity:0,scale:.8},{opacity:1,scale:1,duration:.4,ease:"back.out(2)"},22.85);
+      tl.fromTo("#ctaDisc",{opacity:0},{opacity:1,duration:.4},23.10);
+      tl.fromTo("#mascot6",{opacity:0,x:-120,y:40},{opacity:1,x:0,y:0,duration:.5,ease:"back.out(1.4)"},22.60);
+      tl.set("#s6",{opacity:1},24.4);   // override scene fade-out, hold to end
+
+      window.__timelines["main"] = tl;
+    </script>
+  </div>
+</body>
+</html>
