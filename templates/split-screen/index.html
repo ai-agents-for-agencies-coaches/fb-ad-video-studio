@@ -1,0 +1,185 @@
+<!doctype html>
+<!--
+  TEMPLATE: split-screen  (HyperFrames composition)
+  Two stacked media panels + word-synced caption band across the seam + SFX rail.
+  ~15s, 1080x1920, 30fps. Vertical (Reels/Shorts/Stories).
+
+  THE FORMAT (very high-performing UGC / reaction ad):
+    TOP panel  (0–950px)    = presenter / reaction / talking-head / "the claim"
+    BOTTOM panel (970–1920)  = product demo / screen-recording / b-roll / "the proof"
+    A caption pill sits ON the seam and reads over both panels.
+
+  SWAP THESE:
+    --accent / --accent-light / --accent-deep / --ink / --bg   brand tokens (:root)
+    assets/top.mp4        the TOP clip  (reaction / presenter) — see DROP-IN comments below
+    assets/bottom.mp4     the BOTTOM clip (demo / b-roll)      — see DROP-IN comments below
+    audio/vo.mp3          VO narration (generate via scripts/tts.py) — panels stay MUTED
+    [TOP_LABEL] [BOTTOM_LABEL] [Caption beat N] [BRAND] [CTA / URL]   copy
+    SFX timings           anchor to whisper word starts
+
+  Beat arc (keep the RATIOS, retime to your VO):
+    panels snap in 0–0.5 · cap1 0.4–3.5 · cap2 3.6–7 · cap3 7.2–10.5 · cap4 10.6–13 · lockup 13–15
+  Re-encode phone clips first (sparse keyframes break seek):
+    ffmpeg -i raw.mov -c:v libx264 -r 30 -g 30 -keyint_min 30 -movflags +faststart -c:a copy assets/top.mp4
+  Workflow: scripts/tts.py -> scripts/whisper-words.py -> retime captions/SFX -> scripts/fetch-sfx.sh -> npx hyperframes lint && render
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1080, height=1920" />
+  <title>Split Screen</title>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#0a0a0c; --ink:#f5f5f7; --mute:#8b8b95;
+      --accent:#10b981; --accent-light:#6ee7b7; --accent-deep:#064e3b;
+      --warn:#f59e0b; --danger:#ef4444;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{width:1080px;height:1920px;overflow:hidden;background:var(--bg);
+      color:var(--ink);font-family:"Inter",ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+    .clip{position:absolute;opacity:0}
+
+    /* ===== Two stacked panels. Each is an overflow-clipped window; video fills it. ===== */
+    .panel{position:absolute;left:0;width:1080px;height:950px;overflow:hidden;background:var(--accent-deep)}
+    #top-panel{top:0}
+    #bottom-panel{top:970px}
+    .panel video{position:absolute;inset:0;width:1080px;height:950px;object-fit:cover}
+    /* placeholder fill shown until the user drops a real clip in */
+    .placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      font-size:40px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-light);
+      background:radial-gradient(70% 60% at 50% 40%,var(--accent-deep),var(--bg))}
+
+    /* Scrims keep the corner labels + caption legible over busy footage. */
+    #top-scrim{position:absolute;left:0;top:0;width:1080px;height:280px;
+      background:linear-gradient(180deg,rgba(10,10,12,.72),transparent)}
+    #bottom-scrim{position:absolute;left:0;top:1640px;width:1080px;height:280px;
+      background:linear-gradient(0deg,rgba(10,10,12,.72),transparent)}
+
+    /* Corner labels — "claim" vs "proof" (optional). */
+    .panel-label{position:absolute;left:56px;font-size:32px;font-weight:800;letter-spacing:.16em;
+      text-transform:uppercase;color:var(--ink);display:flex;align-items:center;gap:16px}
+    .panel-label::before{content:"";width:16px;height:16px;border-radius:999px;background:var(--accent)}
+    #label-top{top:56px}
+    #label-bottom{top:1810px}
+
+    /* ===== The seam + caption band ===== */
+    #seam{position:absolute;left:0;top:958px;width:1080px;height:14px;background:var(--accent);
+      box-shadow:0 0 44px 6px rgba(16,185,129,.55);transform-origin:left center}
+    .cap{position:absolute;left:70px;right:70px;top:824px;text-align:center;
+      font-size:60px;font-weight:900;line-height:1.12;letter-spacing:-.01em;color:var(--ink);
+      background:rgba(10,10,12,.82);border:2px solid rgba(255,255,255,.10);
+      border-radius:34px;padding:34px 46px;
+      box-shadow:0 30px 70px rgba(0,0,0,.55),inset 0 0 0 6px rgba(16,185,129,.10)}
+    .cap .hl{color:var(--accent)}
+    .cap .danger{color:var(--danger)}
+
+    /* ===== End brand lockup ===== */
+    #lockup{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;text-align:center;padding:0 90px;
+      background:radial-gradient(60% 45% at 50% 42%,var(--accent-deep),var(--bg) 72%)}
+    #lockup .brand{font-size:112px;font-weight:900;letter-spacing:-.02em;line-height:1.02}
+    #lockup .brand .hl{color:var(--accent)}
+    #lockup .pill{margin-top:52px;font-size:48px;font-weight:800;color:var(--bg);
+      background:var(--accent);padding:28px 68px;border-radius:999px}
+
+    #progress{position:absolute;left:0;bottom:0;height:12px;width:0;background:var(--accent);z-index:50}
+  </style>
+</head>
+<body>
+  <div id="root" data-composition-id="main"
+       data-start="0" data-duration="15"
+       data-width="1080" data-height="1920" data-fps="30">
+
+    <!-- VO (track 0) — replace with scripts/tts.py output. Panel videos are MUTED. -->
+    <audio id="vo" class="clip" src="audio/vo.mp3" data-start="0" data-duration="15" data-track-index="0"></audio>
+
+    <!-- SFX rail (track 300+) — fetch via scripts/fetch-sfx.sh, retime to whisper words -->
+    <audio id="sfx-whoosh-1" class="clip" src="assets/sfx/whoosh.mp3" data-start="0.0"  data-duration="0.6"  data-track-index="300"></audio>
+    <audio id="sfx-tick-1"   class="clip" src="assets/sfx/tick.mp3"   data-start="3.6"  data-duration="0.3"  data-track-index="301"></audio>
+    <audio id="sfx-tick-2"   class="clip" src="assets/sfx/tick.mp3"   data-start="7.2"  data-duration="0.3"  data-track-index="302"></audio>
+    <audio id="sfx-ding-1"   class="clip" src="assets/sfx/ding.mp3"   data-start="10.6" data-duration="0.65" data-track-index="303"></audio>
+    <audio id="sfx-punch-1"  class="clip" src="assets/sfx/punch.mp3"  data-start="13.0" data-duration="0.22" data-track-index="304"></audio>
+
+    <!-- ===== TOP PANEL (track 1) — reaction / presenter / "the claim" ===== -->
+    <div id="top-panel" class="panel clip" data-start="0" data-duration="15" data-track-index="1">
+      <!-- DROP-IN: replace the .placeholder line below with your real clip:
+           <video id="top-video" muted src="assets/top.mp4" data-start="0" data-duration="15"></video> -->
+      <div class="placeholder">[TOP CLIP — assets/top.mp4]</div>
+      <div id="top-scrim"></div>
+      <div id="label-top" class="panel-label">[TOP_LABEL]</div>
+    </div>
+
+    <!-- ===== BOTTOM PANEL (track 2) — demo / screen-record / b-roll / "the proof" ===== -->
+    <div id="bottom-panel" class="panel clip" data-start="0" data-duration="15" data-track-index="2">
+      <!-- DROP-IN: replace the .placeholder line below with your real clip:
+           <video id="bottom-video" muted src="assets/bottom.mp4" data-start="0" data-duration="15"></video> -->
+      <div class="placeholder">[BOTTOM CLIP — assets/bottom.mp4]</div>
+      <div id="bottom-scrim"></div>
+      <div id="label-bottom" class="panel-label">[BOTTOM_LABEL]</div>
+    </div>
+
+    <!-- Seam divider (track 10) -->
+    <div id="seam" class="clip" data-start="0" data-duration="15" data-track-index="10"></div>
+
+    <!-- Caption band across the seam (track 100+) — data-start = whisper word start -->
+    <div id="cap-1" class="cap clip" data-start="0.4"  data-duration="3.1" data-track-index="100">[HOOK — <span class="hl">scroll-stopping</span> claim]</div>
+    <div id="cap-2" class="cap clip" data-start="3.6"  data-duration="3.4" data-track-index="101">[the <span class="danger">problem</span> they feel]</div>
+    <div id="cap-3" class="cap clip" data-start="7.2"  data-duration="3.3" data-track-index="102">[watch the <span class="hl">proof</span> below]</div>
+    <div id="cap-4" class="cap clip" data-start="10.6" data-duration="2.4" data-track-index="103">[the payoff / result]</div>
+
+    <!-- End brand lockup (track 200) -->
+    <div id="lockup" class="clip" data-start="13" data-duration="2" data-track-index="200">
+      <div class="brand">[BRAND — <span class="hl">tagline</span>]</div>
+      <div class="pill">[CTA / URL]</div>
+    </div>
+
+    <div id="progress"></div>
+
+    <script>
+      // Anchor every time below to whisper word starts (scripts/whisper-words.py).
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused:true, defaults:{ ease:"expo.out" } });
+
+      // progress bar across the whole ad
+      tl.to("#progress", { width:1080, duration:15, ease:"none" }, 0);
+
+      // ---- Panels snap in: top slides down, bottom slides up, seam wipes across ----
+      tl.set(["#top-panel","#bottom-panel","#seam"], { opacity:1 }, 0);
+      tl.fromTo("#top-panel",    { yPercent:-100 }, { yPercent:0, duration:.55, ease:"expo.out" }, 0);
+      tl.fromTo("#bottom-panel", { yPercent:100 },  { yPercent:0, duration:.55, ease:"expo.out" }, 0.05);
+      tl.fromTo("#seam", { scaleX:0 }, { scaleX:1, duration:.5, ease:"power3.out" }, 0.35);
+      // subtle seam pulse on each caption hit keeps the two panels feeling connected
+      [0.4,3.6,7.2,10.6].forEach(t=>{
+        tl.to("#seam", { scaleY:2.0, duration:.12, ease:"power2.out" }, t);
+        tl.to("#seam", { scaleY:1.0, duration:.25, ease:"power2.in" }, t+.12);
+      });
+
+      // ---- Captions: fade/rise in, hard-kill out (anchored to whisper words) ----
+      const cap = (sel, tIn, tOut) => {
+        tl.fromTo(sel, { opacity:0, y:26, scale:.96 },
+                       { opacity:1, y:0, scale:1, duration:.28, ease:"back.out(1.6)" }, tIn);
+        tl.to(sel, { opacity:0, y:-18, duration:.24, ease:"power2.in", overwrite:"auto" }, tOut);
+        tl.set(sel, { opacity:0 }, tOut + .3);            // hard-kill for seek safety
+      };
+      // exit tOut chosen so the hard-kill (tOut+.3) lands ON the next clip's
+      // start boundary — keeps non-linear seeking clean (see lint rule).
+      cap("#cap-1", 0.4,  3.3);   // hard-kill 3.6  == cap-2 start
+      cap("#cap-2", 3.6,  6.9);   // hard-kill 7.2  == cap-3 start
+      cap("#cap-3", 7.2, 10.3);   // hard-kill 10.6 == cap-4 start
+      cap("#cap-4", 10.6, 12.7);  // hard-kill 13.0 == lockup start
+
+      // ---- End lockup covers the frame; panels + seam drop out ----
+      tl.to(["#top-panel","#bottom-panel","#seam"], { opacity:0, duration:.3, overwrite:"auto" }, 12.9);
+      tl.set(["#top-panel","#bottom-panel","#seam"], { opacity:0 }, 13.2);
+      tl.fromTo("#lockup", { opacity:0, scale:.94 },
+                           { opacity:1, scale:1, duration:.45, ease:"back.out(1.5)" }, 13.0);
+      tl.fromTo("#lockup .pill", { scale:.8, opacity:0 },
+                                 { scale:1, opacity:1, duration:.35, ease:"back.out(2)" }, 13.5);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </div>
+</body>
+</html>

@@ -26,12 +26,17 @@ Because every ad is a *composition file*, you get what a timeline editor structu
 - **It version-controls and templatizes.** `git diff` a headline change. And the killer move — **share a winning video ad and Claude reverse-engineers its arc, pacing, and caption rhythm into a reusable template.** The winner stops being a competitor's video and becomes your repeatable format.
 - **It scales sideways.** One composition → a dozen on-brand variants for testing. New script, new VO, new offer — same proven shape, rendered, not rebuilt.
 
-Two families ship ready:
+Seven families ship ready:
 
 | Template | Length | You bring | For |
 |----------|--------|-----------|-----|
 | **Motion-graphics spot** | 15–30s | a VO script | Offer/feature ads, retargeting, no on-camera talent |
 | **Talking-head founder ad** | 45–75s | a phone recording | Founder story, authority, cold traffic |
+| **iMessage conversation** | ~10–14s | a message script | Social-proof / "a friend told me" text-thread ads |
+| **revid-story** | ~25s | AI scene backgrounds + a VO script | Fast full-bleed "revid" story ads for lead-gen / DR |
+| **Split-screen** | ~15s | two clips + a VO script | Reaction / UGC, claim-vs-proof, demo + talking-head |
+| **Listicle / top-5** | 15–30s | a VO script | "Top 5 / 5 Reasons" fast-retention faceless roundups |
+| **Whiteboard** | ~55s | ElevenLabs + Gemini keys | Hand-drawn doodle explainer (own engine, not HyperFrames) |
 
 It's MIT-licensed and free. The render runs locally. The next video ad you would have paid $1,500 and waited a week for is one `npx hyperframes render` away — and the one after that is a script swap.
 
@@ -97,6 +102,11 @@ Real HyperFrames compositions in `templates/` — generic brand tokens (`--accen
 
 - `motion-graphics-spot/` — kinetic-typography spot. Beat arc: hook · problem · solution · proof · CTA. VO + SFX, no footage.
 - `talking-head-founder-ad/` — the proven speaker PIP arc, whisper-synced captions, SFX rail, whip-pan cuts, closing lockup.
+- `imessage-conversation/` — animated text thread (typing dots, bubble pop-in, auto-scroll, link-preview CTA). No talent or VO.
+- `revid-story/` — full-bleed AI scene backgrounds that hard-cut on whooshes behind big word-synced kinetic captions. Bring AI backgrounds + VO.
+- `split-screen/` — two stacked panels (reaction/claim on top, demo/proof on bottom) with a caption band on the seam. Bring two clips + VO.
+- `listicle-top5/` — "Top 5 / 5 Reasons" fast-cut spot: title card → five numbered item scenes → CTA lockup. VO script only.
+- `whiteboard/` — **own render engine, not HyperFrames.** A marker hand scribbles each scene's line art in, then color paints over it, ending on a pristine cartoon. Needs ElevenLabs + Gemini. See [`templates/whiteboard/README.md`](templates/whiteboard/README.md).
 
 ## Reverse-template workflow
 

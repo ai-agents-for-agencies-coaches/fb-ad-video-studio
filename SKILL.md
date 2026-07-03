@@ -7,11 +7,15 @@ description: Produce high-converting Facebook/Instagram/TikTok ad VIDEOS — mot
 
 Direct-response **video ads** built as code. HyperFrames (HeyGen's HTML-video framework) is the engine; this skill is the opinionated FB/IG/TikTok ad recipe layered on top — distilled from 23 production iterations of a real founder ad.
 
-It produces three families:
+It produces seven families:
 
 1. **Motion-graphics spot** — kinetic typography + Lottie/CSS motion + VO + SFX. No presenter footage. Fully self-serve, most templatable, fastest.
 2. **Talking-head founder ad** — presenter video with a motion-graphic overlay rail, the proven **speaker PIP arc**, synced captions, and an SFX rail. Needs a user-supplied recording.
 3. **iMessage conversation** — a believable animated text thread (typing dots, bubble pop-in/slide-up, auto-scroll, link-preview CTA) that builds in real time. No presenter, no VO. Social-proof / "a friend told me" angle from a message script alone.
+4. **revid-story** — fast "revid"-style story: full-bleed AI-generated scene backgrounds that hard-cut on whooshes behind big word-synced kinetic captions. Needs AI scene backgrounds + VO. Lead-gen / offer / direct-response.
+5. **Split-screen** — two stacked panels (reaction / presenter / "claim" on top, demo / b-roll / "proof" on bottom) with a caption band riding the seam. Needs two clips + VO. Reaction / UGC / before-after.
+6. **Listicle / top-5** — a "Top 5 / 5 Reasons" fast-cut kinetic spot: title card → five numbered item scenes → CTA lockup. VO script only. High-retention faceless roundups.
+7. **Whiteboard** — hand-drawn doodle/sketch explainer: a marker hand scribbles each scene's line art in, then the color paints over it, ending on a pristine cartoon. Uses its **own render engine (not HyperFrames)**; needs ElevenLabs + Gemini keys.
 
 ## Prerequisites (do not reimplement the framework)
 
@@ -44,7 +48,7 @@ proven structure/pacing; only the brand layer comes from DESIGN.md.
 
 **Don't use:** static images → `image-studio`. Long-form/explainer/YouTube content → generic `hyperframes`. AI-generated talking avatars → HeyGen avatar tools. Diagrams → `excalidraw`.
 
-## The three templates
+## The templates
 
 Copy a folder from `templates/` into a fresh project and edit.
 
@@ -53,8 +57,14 @@ Copy a folder from `templates/` into a fresh project and edit.
 | `motion-graphics-spot/` | 15–30s | VO script only | Offer/feature ads, retargeting, no on-camera talent |
 | `talking-head-founder-ad/` | 45–75s | Presenter recording + VO | Founder story, trust/authority, cold traffic |
 | `imessage-conversation/` | ~10–14s | Message script only | Social-proof / curiosity / friend-recommendation ads (illustrative text thread, no talent or VO) |
+| `revid-story/` | ~25s | AI scene backgrounds (img/mp4) + VO + SFX | Fast "revid" story: swapping full-bleed scenes with big kinetic captions, for lead-gen / offer / DR |
+| `split-screen/` | ~15s | 2 clips (top + bottom) + VO | Reaction / UGC ads, claim-vs-proof, demo + talking-head, before/after |
+| `listicle-top5/` | 15–30s | VO script only | "Top 5 / 5 Reasons" list ads, feature roundups, fast-retention faceless spots |
+| `whiteboard/` | ~55s | ElevenLabs + Gemini keys | Story-driven doodle/sketch explainer ads (home services or any short narrated explainer) |
 
-Both ship as real HyperFrames compositions (`index.html` + `hyperframes.json` + `meta.json`) with **generic brand tokens** (`--accent`, `--ink`, …) and `[BRACKET]` placeholder copy. They are scaffolds — rework freely.
+All but one ship as real HyperFrames compositions (`index.html` + `hyperframes.json` + `meta.json`) with **generic brand tokens** (`--accent`, `--ink`, …) and `[BRACKET]` placeholder copy. They are scaffolds — rework freely.
+
+**Exception — `whiteboard/` is a self-contained engine, not a HyperFrames composition.** It ships its own raster "line-then-paint" render engine in `templates/whiteboard/assets/` (`scene_full.html` + `render.js` + `hand.png`, encoded by `assemble.py`) and its own build workflow — see `templates/whiteboard/README.md` and `templates/whiteboard/references/RUNBOOK.md`. The HyperFrames pipeline steps below do **not** apply to it; do not try to author it as a HyperFrames composition or reinvent the reveal.
 
 ## Production pipeline (the proven order)
 

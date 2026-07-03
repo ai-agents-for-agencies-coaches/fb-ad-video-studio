@@ -1,0 +1,22 @@
+<!-- TEMPLATE sign-off / CTA slide. Fill {{LOGO_B64}}, {{TAGLINE_1}}, {{TAGLINE_2}}, {{CTA}}
+     then render with image-studio render.js at 720x1280 @2x -> scenes/<signoff_id>.png
+     (e.g. scenes/s8_signoff.png). Navy #292966 / gold #D4AF37 by default. The 👇 points to
+     the platform's real CTA button below the video. -->
+<!doctype html><html><head><meta charset="utf8">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}
+body{width:720px;height:1280px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Oswald',sans-serif}
+img{height:200px;margin-bottom:36px}
+.divider{width:130px;height:6px;background:#D4AF37;border-radius:3px;margin-bottom:32px}
+.tag{font-family:'Bebas Neue';font-size:54px;letter-spacing:3px;color:#292966;text-align:center;line-height:1;margin-bottom:64px}
+.tag .g{color:#D4AF37}
+.cta{background:#D4AF37;color:#292966;font-family:'Bebas Neue';font-size:46px;letter-spacing:1.5px;padding:26px 54px;border-radius:16px;box-shadow:0 10px 24px rgba(41,41,102,.22);text-align:center}
+.below{margin-top:28px;font-family:'Oswald';font-weight:600;font-size:29px;letter-spacing:1px;color:#292966}
+.arrow{font-size:44px;margin-top:6px}</style></head><body>
+<img src="data:image/png;base64,{{LOGO_B64}}">
+<div class="divider"></div>
+<div class="tag">{{TAGLINE_1}}<br><span class="g">{{TAGLINE_2}}</span></div>
+<div class="cta">{{CTA}}</div>
+<div class="below">Click the link below</div>
+<div class="arrow">👇</div>
+</body></html>
